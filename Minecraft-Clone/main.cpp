@@ -47,19 +47,23 @@ int main(void)
 
     const char* vertexShaderSrc = 
         "#version 330 core\n"
-        "layout (location = 0) in vec3 aPos;\n"
-        "uniform mat4 transform;\n"
+        "in vec3 position;\n"
+        "in vec3 color;\n"
+        "out vec3 Color;\n"
+        "uniform mat4 model;\n"
         "uniform mat4 view;\n"
         "uniform mat4 proj;\n"
         "void main() {\n"
-        "   gl_Position = proj * view * transform * vec4(aPos, 1.0f);\n"
+        "   Color = color;\n"
+        "   gl_Position = proj * view * model * vec4(position, 1.0f);\n"
         "}\0";
 
     const char* fragmentShaderSrc =
         "#version 330 core\n"
+        "in vec3 Color;"
         "out vec4 fragColor;\n"
         "void main() {\n"
-        "   fragColor = vec4(0.0f, 1.0f, 1.0f, 1.0f);\n"
+        "   fragColor = vec4(Color, 1.0f);\n"
         "}\0";
 
     // Create vertex array object
@@ -72,10 +76,48 @@ int main(void)
     glGenBuffers(1, &vbo);
 
     GLfloat vertices[] = {
-        -0.5f,  0.5f, // top left
-         0.5f,  0.5f, // top right
-         0.5f, -0.5f, // bottom right
-        -0.5f, -0.5f, // bottom left
+        // X      Y      Z        R     G     B
+        -0.5f, -0.5f, -0.5f,    1.0f, 0.0f, 0.0f,
+         0.5f, -0.5f, -0.5f,    0.0f, 1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,    0.0f, 0.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,    1.0f, 1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,    1.0f, 0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,    0.0f, 1.0f, 0.0f,
+
+        -0.5f, -0.5f,  0.5f,    0.0f, 0.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,    1.0f, 1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,    1.0f, 0.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,    0.0f, 1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,    0.0f, 0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,    1.0f, 1.0f, 1.0f,
+
+        -0.5f,  0.5f,  0.5f,    1.0f, 0.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,    0.0f, 1.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,    0.0f, 0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,    1.0f, 1.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,    1.0f, 0.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,    0.0f, 1.0f, 0.0f,
+
+         0.5f,  0.5f,  0.5f,    0.0f, 0.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,    1.0f, 1.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,    1.0f, 0.0f, 0.0f,
+         0.5f, -0.5f, -0.5f,    0.0f, 1.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,    0.0f, 0.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,    1.0f, 1.0f, 1.0f,
+
+        -0.5f, -0.5f, -0.5f,    1.0f, 0.0f, 0.0f,
+         0.5f, -0.5f, -0.5f,    0.0f, 1.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,    0.0f, 0.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,    1.0f, 1.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,    1.0f, 0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,    0.0f, 1.0f, 0.0f,
+
+        -0.5f,  0.5f, -0.5f,    0.0f, 0.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,    1.0f, 1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,    1.0f, 0.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,    0.0f, 1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,    0.0f, 0.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,    1.0f, 1.0f, 1.0f,
     };
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -112,15 +154,19 @@ int main(void)
     glUseProgram(shaderProgram);
 
     // Specify the layout of the vertex data
-    GLint posAttrib = glGetAttribLocation(shaderProgram, "aPos");
+    GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
     glEnableVertexAttribArray(posAttrib);
-    glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), 0);
+    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), 0);
 
-    GLint transformLoc = glGetUniformLocation(shaderProgram, "transform");
+    GLint colorAttrib = glGetAttribLocation(shaderProgram, "color");
+    glEnableVertexAttribArray(colorAttrib);
+    glVertexAttribPointer(colorAttrib, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(GLfloat)));
+
+    GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
 
     // Set up projection
     glm::mat4 view = glm::lookAt(
-        glm::vec3(1.2f, 1.2f, 1.2f),
+        glm::vec3(3.0f, 3.0f, 3.0f),
         glm::vec3(0.0f, 0.0f, 0.0f),
         glm::vec3(0.0f, 0.0f, 1.0f)
     );
@@ -133,6 +179,8 @@ int main(void)
 
     auto t_start = std::chrono::high_resolution_clock::now();
 
+    glEnable(GL_DEPTH_TEST);
+
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
@@ -140,19 +188,17 @@ int main(void)
 
         /* Render here */
         glClearColor(0.6f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // rotate transform around the z-axis
         auto t_now = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration_cast<std::chrono::duration<float>>(t_now - t_start).count();
 
-        glm::mat4 transform = glm::mat4(1.0f);
-        transform = glm::rotate(transform, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(transform));
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::rotate(model, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-        glUseProgram(shaderProgram);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
