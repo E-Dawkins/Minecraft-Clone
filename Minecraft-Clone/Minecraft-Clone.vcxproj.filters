@@ -39,4 +39,8 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="assets\generic.frag" />
+    <None Include="assets\generic.vert" />
+  </ItemGroup>
 </Project>
