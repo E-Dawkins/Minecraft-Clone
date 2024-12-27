@@ -7,6 +7,7 @@
 #include <chrono>
 #include <fstream>
 #include <sstream>
+#include <SOIL2/SOIL2.h>
 
 const int WINDOW_WIDTH = 640, WINDOW_HEIGHT = 480;
 
@@ -64,14 +65,14 @@ int main(void)
 
     GLfloat vertices[] = {
         // X      Y      Z
-        -0.5f, -0.5f, -0.5f,    1.0f, 0.0f, 0.0f, // bottom-back-left
-         0.5f, -0.5f, -0.5f,    0.0f, 1.0f, 0.0f, // bottom-back-right
-         0.5f,  0.5f, -0.5f,    0.0f, 0.0f, 1.0f, // bottom-forward-right
-        -0.5f,  0.5f, -0.5f,    1.0f, 0.0f, 0.0f, // bottom-forward-left
-        -0.5f, -0.5f,  0.5f,    0.0f, 1.0f, 0.0f, // top-back-left
-         0.5f, -0.5f,  0.5f,    0.0f, 0.0f, 1.0f, // top-back-right
-         0.5f,  0.5f,  0.5f,    1.0f, 0.0f, 0.0f, // top-forward-right
-        -0.5f,  0.5f,  0.5f,    0.0f, 1.0f, 0.0f, // top-forward-left
+        -0.5f, -0.5f, -0.5f,    0.0f, 0.0f, // bottom-back-left
+         0.5f, -0.5f, -0.5f,    1.0f, 0.0f, // bottom-back-right
+         0.5f,  0.5f, -0.5f,    1.0f, 1.0f, // bottom-forward-right
+        -0.5f,  0.5f, -0.5f,    0.0f, 1.0f, // bottom-forward-left
+        -0.5f, -0.5f,  0.5f,    0.0f, 0.0f, // top-back-left
+         0.5f, -0.5f,  0.5f,    1.0f, 0.0f, // top-back-right
+         0.5f,  0.5f,  0.5f,    1.0f, 1.0f, // top-forward-right
+        -0.5f,  0.5f,  0.5f,    0.0f, 1.0f, // top-forward-left
     };
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -93,6 +94,20 @@ int main(void)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
+    // Create / load texture
+    GLuint tex;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    int width, height;
+    unsigned char* image = SOIL_load_image("./assets/sample.png", &width, &height, 0, SOIL_LOAD_RGB);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
+
     // Create and compile the vertex shader
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &vertexShaderSrc, 0); // length 0 means opengl will figure it out for us
@@ -112,15 +127,15 @@ int main(void)
     glUseProgram(shaderProgram);
 
     // Specify the layout of the vertex data
-    const GLuint vertexSize = 6 * sizeof(float);
+    const GLuint vertexSize = 5 * sizeof(float);
 
     GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
     glEnableVertexAttribArray(posAttrib);
     glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, vertexSize, 0);
 
-    GLint colorAttrib = glGetAttribLocation(shaderProgram, "color");
-    glEnableVertexAttribArray(colorAttrib);
-    glVertexAttribPointer(colorAttrib, 3, GL_FLOAT, GL_FALSE, vertexSize, (void*)(3 * sizeof(float)));
+    GLint texAttrib = glGetAttribLocation(shaderProgram, "texcoord");
+    glEnableVertexAttribArray(texAttrib);
+    glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, vertexSize, (void*)(3 * sizeof(float)));
 
     GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
 
@@ -155,7 +170,7 @@ int main(void)
         float time = std::chrono::duration_cast<std::chrono::duration<float>>(t_now - t_start).count();
 
         glm::mat4 model = glm::mat4(1.0f);
-        model = glm::rotate(model, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        model = glm::rotate(model, time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
         glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
