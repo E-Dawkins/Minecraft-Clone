@@ -1,6 +1,12 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <glm/mat4x4.hpp>
+#include <glm/ext/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <chrono>
+
+const int WINDOW_WIDTH = 640, WINDOW_HEIGHT = 480;
 
 void processInput(GLFWwindow* window);
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height);
@@ -20,7 +26,7 @@ int main(void)
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     /* Create a windowed mode window and its OpenGL context */
-    window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
+    window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Hello World", NULL, NULL);
     if (!window)
     {
         std::cout << "Failed to create window!" << std::endl;
@@ -42,8 +48,11 @@ int main(void)
     const char* vertexShaderSrc = 
         "#version 330 core\n"
         "layout (location = 0) in vec3 aPos;\n"
+        "uniform mat4 transform;\n"
+        "uniform mat4 view;\n"
+        "uniform mat4 proj;\n"
         "void main() {\n"
-        "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0f);\n"
+        "   gl_Position = proj * view * transform * vec4(aPos, 1.0f);\n"
         "}\0";
 
     const char* fragmentShaderSrc =
@@ -53,72 +62,76 @@ int main(void)
         "   fragColor = vec4(0.0f, 1.0f, 1.0f, 1.0f);\n"
         "}\0";
 
-    // create vertex and fragment shaders from source
-    unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    // Create vertex array object
+    GLuint vao;
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+
+    // Create a vertex buffer object and copy the vertex data into it
+    GLuint vbo;
+    glGenBuffers(1, &vbo);
+
+    GLfloat vertices[] = {
+        -0.5f,  0.5f, // top left
+         0.5f,  0.5f, // top right
+         0.5f, -0.5f, // bottom right
+        -0.5f, -0.5f, // bottom left
+    };
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    // Create an element array buffer
+    GLuint ebo;
+    glGenBuffers(1, &ebo);
+
+    GLuint indices[] = {
+        0, 1, 2, // first triangle
+        2, 3, 0, // second triangle
+    };
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    // Create and compile the vertex shader
+    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &vertexShaderSrc, 0); // length 0 means opengl will figure it out for us
     glCompileShader(vertexShader);
-    int success;
-    char infolog[512];
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        glGetShaderInfoLog(vertexShader, 512, 0, infolog);
-        std::cout << "Failed to compile the vertex shader! ERR: " << infolog << std::endl;
-    }
 
-    unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    // Create and compile the fragment shader
+    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragmentShader, 1, &fragmentShaderSrc, 0); // length 0 means opengl will figure it out for us
     glCompileShader(fragmentShader);
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        glGetShaderInfoLog(fragmentShader, 512, 0, infolog); // length 0 means opengl will figure it out for us
-        std::cout << "Failed to compile the fragment shader! ERR: " << infolog << std::endl;
-    }
 
-    // link vertex and fragment shaders to a shader program
-    unsigned int shaderProgram = glCreateProgram();
+    // Link vertex and fragment shaders to a shader program
+    GLuint shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
+    glBindFragDataLocation(shaderProgram, 0, "fragColor");
     glLinkProgram(shaderProgram);
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if (!success) {
-        glGetProgramInfoLog(shaderProgram, 512, 0, infolog); // length 0 means opengl will figure it out for us
-        std::cout << "Failed to link the shader program! ERR: " << infolog << std::endl;
-    }
+    glUseProgram(shaderProgram);
 
-    // delete the vertex and fragment shaders to free up resources
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
+    // Specify the layout of the vertex data
+    GLint posAttrib = glGetAttribLocation(shaderProgram, "aPos");
+    glEnableVertexAttribArray(posAttrib);
+    glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), 0);
 
-    float vertices[] = {
-        -0.5f, -0.5f, 0.0f, // bottom left
-        -0.5f,  0.5f, 0.0f, // top left
-         0.5f, -0.5f, 0.0f, // bottom right
-         0.5f,  0.5f, 0.0f, // top right
-    };
+    GLint transformLoc = glGetUniformLocation(shaderProgram, "transform");
 
-    unsigned int indices[] = {
-        1, 0, 2, // first triangle
-        1, 2, 3, // second triangle
-    };
+    // Set up projection
+    glm::mat4 view = glm::lookAt(
+        glm::vec3(1.2f, 1.2f, 1.2f),
+        glm::vec3(0.0f, 0.0f, 0.0f),
+        glm::vec3(0.0f, 0.0f, 1.0f)
+    );
+    GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
-    unsigned int VAO, VBO, EBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
+    glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT, 1.0f, 10.0f);
+    GLint projLoc = glGetUniformLocation(shaderProgram, "proj");
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
 
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    auto t_start = std::chrono::high_resolution_clock::now();
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
@@ -129,9 +142,17 @@ int main(void)
         glClearColor(0.6f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glUseProgram(shaderProgram);
-        glBindVertexArray(VAO);
+        // rotate transform around the z-axis
+        auto t_now = std::chrono::high_resolution_clock::now();
+        float time = std::chrono::duration_cast<std::chrono::duration<float>>(t_now - t_start).count();
+
+        glm::mat4 transform = glm::mat4(1.0f);
+        transform = glm::rotate(transform, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(transform));
+
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+        glUseProgram(shaderProgram);
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
@@ -141,8 +162,13 @@ int main(void)
     }
 
     glDeleteProgram(shaderProgram);
-    glDeleteBuffers(1, &VBO);
-    glDeleteVertexArrays(1, &VAO);
+    glDeleteShader(fragmentShader);
+    glDeleteShader(vertexShader);
+
+    glDeleteBuffers(1, &ebo);
+    glDeleteBuffers(1, &vbo);
+
+    glDeleteVertexArrays(1, &vao);
 
     glfwTerminate();
     return 0;
