@@ -5,11 +5,14 @@
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <chrono>
+#include <fstream>
+#include <sstream>
 
 const int WINDOW_WIDTH = 640, WINDOW_HEIGHT = 480;
 
 void processInput(GLFWwindow* window);
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height);
+std::string loadShader(std::string path);
 
 int main(void)
 {
@@ -45,26 +48,10 @@ int main(void)
         return -1;
     }
 
-    const char* vertexShaderSrc = 
-        "#version 330 core\n"
-        "in vec3 position;\n"
-        "in vec3 color;\n"
-        "out vec3 Color;\n"
-        "uniform mat4 model;\n"
-        "uniform mat4 view;\n"
-        "uniform mat4 proj;\n"
-        "void main() {\n"
-        "   Color = color;\n"
-        "   gl_Position = proj * view * model * vec4(position, 1.0f);\n"
-        "}\0";
-
-    const char* fragmentShaderSrc =
-        "#version 330 core\n"
-        "in vec3 Color;"
-        "out vec4 fragColor;\n"
-        "void main() {\n"
-        "   fragColor = vec4(Color, 1.0f);\n"
-        "}\0";
+    std::string vertexShaderStr = loadShader("./assets/generic.vert");
+    const char* vertexShaderSrc = vertexShaderStr.c_str();
+    std::string fragmentShaderStr = loadShader("./assets/generic.frag");
+    const char* fragmentShaderSrc = fragmentShaderStr.c_str();
 
     // Create vertex array object
     GLuint vao;
@@ -76,48 +63,15 @@ int main(void)
     glGenBuffers(1, &vbo);
 
     GLfloat vertices[] = {
-        // X      Y      Z        R     G     B
-        -0.5f, -0.5f, -0.5f,    1.0f, 0.0f, 0.0f,
-         0.5f, -0.5f, -0.5f,    0.0f, 1.0f, 0.0f,
-         0.5f,  0.5f, -0.5f,    0.0f, 0.0f, 1.0f,
-         0.5f,  0.5f, -0.5f,    1.0f, 1.0f, 1.0f,
-        -0.5f,  0.5f, -0.5f,    1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f,    0.0f, 1.0f, 0.0f,
-
-        -0.5f, -0.5f,  0.5f,    0.0f, 0.0f, 1.0f,
-         0.5f, -0.5f,  0.5f,    1.0f, 1.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,    1.0f, 0.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,    0.0f, 1.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,    0.0f, 0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,    1.0f, 1.0f, 1.0f,
-
-        -0.5f,  0.5f,  0.5f,    1.0f, 0.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,    0.0f, 1.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f,    0.0f, 0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,    1.0f, 1.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,    1.0f, 0.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,    0.0f, 1.0f, 0.0f,
-
-         0.5f,  0.5f,  0.5f,    0.0f, 0.0f, 1.0f,
-         0.5f,  0.5f, -0.5f,    1.0f, 1.0f, 1.0f,
-         0.5f, -0.5f, -0.5f,    1.0f, 0.0f, 0.0f,
-         0.5f, -0.5f, -0.5f,    0.0f, 1.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,    0.0f, 0.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,    1.0f, 1.0f, 1.0f,
-
-        -0.5f, -0.5f, -0.5f,    1.0f, 0.0f, 0.0f,
-         0.5f, -0.5f, -0.5f,    0.0f, 1.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,    0.0f, 0.0f, 1.0f,
-         0.5f, -0.5f,  0.5f,    1.0f, 1.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,    1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f,    0.0f, 1.0f, 0.0f,
-
-        -0.5f,  0.5f, -0.5f,    0.0f, 0.0f, 1.0f,
-         0.5f,  0.5f, -0.5f,    1.0f, 1.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,    1.0f, 0.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,    0.0f, 1.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,    0.0f, 0.0f, 1.0f,
-        -0.5f,  0.5f, -0.5f,    1.0f, 1.0f, 1.0f,
+        // X      Y      Z
+        -0.5f, -0.5f, -0.5f,    1.0f, 0.0f, 0.0f, // bottom-back-left
+         0.5f, -0.5f, -0.5f,    0.0f, 1.0f, 0.0f, // bottom-back-right
+         0.5f,  0.5f, -0.5f,    0.0f, 0.0f, 1.0f, // bottom-forward-right
+        -0.5f,  0.5f, -0.5f,    1.0f, 0.0f, 0.0f, // bottom-forward-left
+        -0.5f, -0.5f,  0.5f,    0.0f, 1.0f, 0.0f, // top-back-left
+         0.5f, -0.5f,  0.5f,    0.0f, 0.0f, 1.0f, // top-back-right
+         0.5f,  0.5f,  0.5f,    1.0f, 0.0f, 0.0f, // top-forward-right
+        -0.5f,  0.5f,  0.5f,    0.0f, 1.0f, 0.0f, // top-forward-left
     };
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -128,8 +82,12 @@ int main(void)
     glGenBuffers(1, &ebo);
 
     GLuint indices[] = {
-        0, 1, 2, // first triangle
-        2, 3, 0, // second triangle
+        0, 1, 2,    2, 3, 0,
+        4, 5, 6,    6, 7, 4,
+        4, 5, 1,    1, 0, 4,
+        5, 6, 2,    2, 1, 5,
+        6, 7, 3,    3, 2, 6,
+        7, 4, 0,    0, 3, 7
     };
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
@@ -154,13 +112,15 @@ int main(void)
     glUseProgram(shaderProgram);
 
     // Specify the layout of the vertex data
+    const GLuint vertexSize = 6 * sizeof(float);
+
     GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
     glEnableVertexAttribArray(posAttrib);
-    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), 0);
+    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, vertexSize, 0);
 
     GLint colorAttrib = glGetAttribLocation(shaderProgram, "color");
     glEnableVertexAttribArray(colorAttrib);
-    glVertexAttribPointer(colorAttrib, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(GLfloat)));
+    glVertexAttribPointer(colorAttrib, 3, GL_FLOAT, GL_FALSE, vertexSize, (void*)(3 * sizeof(float)));
 
     GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
 
@@ -198,7 +158,7 @@ int main(void)
         model = glm::rotate(model, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
@@ -229,4 +189,17 @@ void processInput(GLFWwindow* window) {
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height) {
     // tell OpenGL that the new rendering area is at position (0, 0) and extents (width, height)
     glViewport(0, 0, width, height);
+}
+
+std::string loadShader(std::string path) {
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        std::cout << "Failed to load shader at: " << path << std::endl;
+        return "";
+    }
+
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+
+    return buffer.str();
 }
