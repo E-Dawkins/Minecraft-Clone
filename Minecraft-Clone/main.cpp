@@ -64,15 +64,36 @@ int main(void)
     glGenBuffers(1, &vbo);
 
     GLfloat vertices[] = {
-        // X      Y      Z
-        -0.5f, -0.5f, -0.5f,    0.0f, 0.0f, // bottom-back-left
-         0.5f, -0.5f, -0.5f,    1.0f, 0.0f, // bottom-back-right
-         0.5f,  0.5f, -0.5f,    1.0f, 1.0f, // bottom-forward-right
-        -0.5f,  0.5f, -0.5f,    0.0f, 1.0f, // bottom-forward-left
-        -0.5f, -0.5f,  0.5f,    0.0f, 0.0f, // top-back-left
-         0.5f, -0.5f,  0.5f,    1.0f, 0.0f, // top-back-right
-         0.5f,  0.5f,  0.5f,    1.0f, 1.0f, // top-forward-right
-        -0.5f,  0.5f,  0.5f,    0.0f, 1.0f, // top-forward-left
+        // front face
+        -0.5f, -0.5f,  0.5f,    0.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,    1.0f, 0.0f,
+         0.5f, -0.5f, -0.5f,    1.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,    0.0f, 1.0f,
+        // back face
+         0.5f,  0.5f,  0.5f,    0.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,    1.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,    1.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,    0.0f, 1.0f,
+        // left face
+        -0.5f,  0.5f,  0.5f,    0.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,    1.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,    1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,    0.0f, 1.0f,
+        // right face
+         0.5f, -0.5f,  0.5f,    0.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,    1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,    1.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,    0.0f, 1.0f,
+        // top face
+        -0.5f,  0.5f,  0.5f,    0.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,    1.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,    1.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,    0.0f, 1.0f,
+        // bottom face
+        -0.5f, -0.5f, -0.5f,    0.0f, 0.0f,
+         0.5f, -0.5f, -0.5f,    1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,    1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,    0.0f, 1.0f,
     };
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -83,12 +104,12 @@ int main(void)
     glGenBuffers(1, &ebo);
 
     GLuint indices[] = {
-        0, 1, 2,    2, 3, 0,
-        4, 5, 6,    6, 7, 4,
-        4, 5, 1,    1, 0, 4,
-        5, 6, 2,    2, 1, 5,
-        6, 7, 3,    3, 2, 6,
-        7, 4, 0,    0, 3, 7
+        0 + 0, 0 + 1, 0 + 2,    0 + 2, 0 + 3, 0 + 0,        // front face
+        4 + 0, 4 + 1, 4 + 2,    4 + 2, 4 + 3, 4 + 0,        // back face
+        8 + 0, 8 + 1, 8 + 2,    8 + 2, 8 + 3, 8 + 0,        // left face
+        12 + 0, 12 + 1, 12 + 2,    12 + 2, 12 + 3, 12 + 0,  // right face
+        16 + 0, 16 + 1, 16 + 2,    16 + 2, 16 + 3, 16 + 0,  // top face
+        20 + 0, 20 + 1, 20 + 2,    20 + 2, 20 + 3, 20 + 0,  // bottom face
     };
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
@@ -105,7 +126,7 @@ int main(void)
     glGenerateMipmap(GL_TEXTURE_2D);
 
     int width, height;
-    unsigned char* image = SOIL_load_image("./assets/sample.png", &width, &height, 0, SOIL_LOAD_RGB);
+    unsigned char* image = SOIL_load_image("./assets/texture-atlas.png", &width, &height, 0, SOIL_LOAD_RGB);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
 
     // Create and compile the vertex shader
@@ -152,6 +173,11 @@ int main(void)
     GLint projLoc = glGetUniformLocation(shaderProgram, "proj");
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
 
+    // Pass uv offset to the shader
+    glm::vec2 offset = {1, 0};
+    GLint offsetLoc = glGetUniformLocation(shaderProgram, "uvOffset");
+    glUniform2fv(offsetLoc, 1, &offset[0]);
+
     auto t_start = std::chrono::high_resolution_clock::now();
 
     glEnable(GL_DEPTH_TEST);
@@ -170,7 +196,7 @@ int main(void)
         float time = std::chrono::duration_cast<std::chrono::duration<float>>(t_now - t_start).count();
 
         glm::mat4 model = glm::mat4(1.0f);
-        model = glm::rotate(model, time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::rotate(model, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
         glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
