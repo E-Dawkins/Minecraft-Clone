@@ -8,12 +8,19 @@
 #include <fstream>
 #include <sstream>
 #include <SOIL2/SOIL2.h>
+#include <vector>
 
 const int WINDOW_WIDTH = 640, WINDOW_HEIGHT = 480;
 
 void processInput(GLFWwindow* window);
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height);
 std::string loadShader(std::string path);
+
+struct Vertex {
+    glm::vec3 position;
+    glm::vec2 uv;
+    int faceIndex; // FRONT, BACK, LEFT, RIGHT, TOP, BOTTOM
+};
 
 int main(void)
 {
@@ -63,37 +70,37 @@ int main(void)
     GLuint vbo;
     glGenBuffers(1, &vbo);
 
-    GLfloat vertices[] = {
+    Vertex vertices[] = {
         // front face
-        -0.5f, -0.5f,  0.5f,    0.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,    1.0f, 0.0f,
-         0.5f, -0.5f, -0.5f,    1.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,    0.0f, 1.0f,
+        { { -0.5f, -0.5f,  0.5f },    { 0.0f, 0.0f },   0 },
+        { {  0.5f, -0.5f,  0.5f },    { 1.0f, 0.0f },   0 },
+        { {  0.5f, -0.5f, -0.5f },    { 1.0f, 1.0f },   0 },
+        { { -0.5f, -0.5f, -0.5f },    { 0.0f, 1.0f },   0 },
         // back face
-         0.5f,  0.5f,  0.5f,    0.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,    1.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,    1.0f, 1.0f,
-         0.5f,  0.5f, -0.5f,    0.0f, 1.0f,
+        { {  0.5f,  0.5f,  0.5f },    { 0.0f, 0.0f },   1 },
+        { { -0.5f,  0.5f,  0.5f },    { 1.0f, 0.0f },   1 },
+        { { -0.5f,  0.5f, -0.5f },    { 1.0f, 1.0f },   1 },
+        { {  0.5f,  0.5f, -0.5f },    { 0.0f, 1.0f },   1 },
         // left face
-        -0.5f,  0.5f,  0.5f,    0.0f, 0.0f,
-        -0.5f, -0.5f,  0.5f,    1.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f,    1.0f, 1.0f,
-        -0.5f,  0.5f, -0.5f,    0.0f, 1.0f,
+        { { -0.5f,  0.5f,  0.5f },    { 0.0f, 0.0f },   2 },
+        { { -0.5f, -0.5f,  0.5f },    { 1.0f, 0.0f },   2 },
+        { { -0.5f, -0.5f, -0.5f },    { 1.0f, 1.0f },   2 },
+        { { -0.5f,  0.5f, -0.5f },    { 0.0f, 1.0f },   2 },
         // right face
-         0.5f, -0.5f,  0.5f,    0.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,    1.0f, 0.0f,
-         0.5f,  0.5f, -0.5f,    1.0f, 1.0f,
-         0.5f, -0.5f, -0.5f,    0.0f, 1.0f,
+        { {  0.5f, -0.5f,  0.5f },    { 0.0f, 0.0f },   3 },
+        { {  0.5f,  0.5f,  0.5f },    { 1.0f, 0.0f },   3 },
+        { {  0.5f,  0.5f, -0.5f },    { 1.0f, 1.0f },   3 },
+        { {  0.5f, -0.5f, -0.5f },    { 0.0f, 1.0f },   3 },
         // top face
-        -0.5f,  0.5f,  0.5f,    0.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,    1.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,    1.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,    0.0f, 1.0f,
+        { { -0.5f,  0.5f,  0.5f },    { 0.0f, 0.0f },   4 },
+        { {  0.5f,  0.5f,  0.5f },    { 1.0f, 0.0f },   4 },
+        { {  0.5f, -0.5f,  0.5f },    { 1.0f, 1.0f },   4 },
+        { { -0.5f, -0.5f,  0.5f },    { 0.0f, 1.0f },   4 },
         // bottom face
-        -0.5f, -0.5f, -0.5f,    0.0f, 0.0f,
-         0.5f, -0.5f, -0.5f,    1.0f, 0.0f,
-         0.5f,  0.5f, -0.5f,    1.0f, 1.0f,
-        -0.5f,  0.5f, -0.5f,    0.0f, 1.0f,
+        { { -0.5f, -0.5f, -0.5f },    { 0.0f, 0.0f },   5 },
+        { {  0.5f, -0.5f, -0.5f },    { 1.0f, 0.0f },   5 },
+        { {  0.5f,  0.5f, -0.5f },    { 1.0f, 1.0f },   5 },
+        { { -0.5f,  0.5f, -0.5f },    { 0.0f, 1.0f },   5 },
     };
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -148,16 +155,19 @@ int main(void)
     glUseProgram(shaderProgram);
 
     // Specify the layout of the vertex data
-    const GLuint vertexSize = 5 * sizeof(float);
-
     GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
     glEnableVertexAttribArray(posAttrib);
-    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, vertexSize, 0);
+    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(offsetof(Vertex, position)));
 
     GLint texAttrib = glGetAttribLocation(shaderProgram, "texcoord");
     glEnableVertexAttribArray(texAttrib);
-    glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, vertexSize, (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(offsetof(Vertex, uv)));
 
+    GLint indexAttrib = glGetAttribLocation(shaderProgram, "faceIndex");
+    glEnableVertexAttribArray(indexAttrib);
+    glVertexAttribIPointer(indexAttrib, 1, GL_INT, sizeof(Vertex), (void*)(offsetof(Vertex, faceIndex)));
+
+    // Bind shader uniforms
     GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
 
     // Set up projection
@@ -174,9 +184,9 @@ int main(void)
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
 
     // Pass uv offset to the shader
-    glm::vec2 offset = {1, 0};
-    GLint offsetLoc = glGetUniformLocation(shaderProgram, "uvOffset");
-    glUniform2fv(offsetLoc, 1, &offset[0]);
+    std::vector<glm::vec2> offsets = { {2, 0}, {2, 0}, {2, 0}, {2, 0}, {1, 0}, {0, 0} };
+    GLint offsetLoc = glGetUniformLocation(shaderProgram, "uvOffsets");
+    glUniform2fv(offsetLoc, offsets.size(), &offsets[0][0]);
 
     auto t_start = std::chrono::high_resolution_clock::now();
 
