@@ -2,34 +2,18 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <glm/mat4x4.hpp>
-#include <glm/ext/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <chrono>
 #include <fstream>
 #include <sstream>
-#include <SOIL2/SOIL2.h>
-#include <vector>
+
+#include "Chunk.h"
 
 const int WINDOW_WIDTH = 640, WINDOW_HEIGHT = 480;
-const float blockTextureSize = 16.0f / 128.0f;
-
-enum blockType {
-    DIRT = 0,
-    GRASS,
-    GRASS_SIDE,
-    STONE,
-    COBBLESTONE,
-};
 
 void processInput(GLFWwindow* window);
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height);
 std::string loadShader(std::string path);
-glm::vec2 getTextureCoords(blockType type, int vertIndex);
-
-struct Vertex {
-    glm::vec3 position;
-    glm::vec2 uv;
-};
 
 int main(void)
 {
@@ -70,81 +54,6 @@ int main(void)
     std::string fragmentShaderStr = loadShader("./assets/generic.frag");
     const char* fragmentShaderSrc = fragmentShaderStr.c_str();
 
-    // Create vertex array object
-    GLuint vao;
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
-
-    // Create a vertex buffer object and copy the vertex data into it
-    GLuint vbo;
-    glGenBuffers(1, &vbo);
-
-    Vertex vertices[] = {
-        // front face
-        { { -0.5f, -0.5f,  0.5f },    getTextureCoords(GRASS_SIDE, 0) },
-        { {  0.5f, -0.5f,  0.5f },    getTextureCoords(GRASS_SIDE, 1) },
-        { {  0.5f, -0.5f, -0.5f },    getTextureCoords(GRASS_SIDE, 2) },
-        { { -0.5f, -0.5f, -0.5f },    getTextureCoords(GRASS_SIDE, 3) },
-        // back face
-        { {  0.5f,  0.5f,  0.5f },    getTextureCoords(GRASS_SIDE, 0) },
-        { { -0.5f,  0.5f,  0.5f },    getTextureCoords(GRASS_SIDE, 1) },
-        { { -0.5f,  0.5f, -0.5f },    getTextureCoords(GRASS_SIDE, 2) },
-        { {  0.5f,  0.5f, -0.5f },    getTextureCoords(GRASS_SIDE, 3) },
-        // left face
-        { { -0.5f,  0.5f,  0.5f },    getTextureCoords(GRASS_SIDE, 0) },
-        { { -0.5f, -0.5f,  0.5f },    getTextureCoords(GRASS_SIDE, 1) },
-        { { -0.5f, -0.5f, -0.5f },    getTextureCoords(GRASS_SIDE, 2) },
-        { { -0.5f,  0.5f, -0.5f },    getTextureCoords(GRASS_SIDE, 3) },
-        // right face
-        { {  0.5f, -0.5f,  0.5f },    getTextureCoords(GRASS_SIDE, 0) },
-        { {  0.5f,  0.5f,  0.5f },    getTextureCoords(GRASS_SIDE, 1) },
-        { {  0.5f,  0.5f, -0.5f },    getTextureCoords(GRASS_SIDE, 2) },
-        { {  0.5f, -0.5f, -0.5f },    getTextureCoords(GRASS_SIDE, 3) },
-        // top face
-        { { -0.5f,  0.5f,  0.5f },    getTextureCoords(GRASS, 0) },
-        { {  0.5f,  0.5f,  0.5f },    getTextureCoords(GRASS, 1) },
-        { {  0.5f, -0.5f,  0.5f },    getTextureCoords(GRASS, 2) },
-        { { -0.5f, -0.5f,  0.5f },    getTextureCoords(GRASS, 3) },
-        // bottom face
-        { { -0.5f, -0.5f, -0.5f },    getTextureCoords(DIRT, 0) },
-        { {  0.5f, -0.5f, -0.5f },    getTextureCoords(DIRT, 1) },
-        { {  0.5f,  0.5f, -0.5f },    getTextureCoords(DIRT, 2) },
-        { { -0.5f,  0.5f, -0.5f },    getTextureCoords(DIRT, 3) },
-    };
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    // Create an element array buffer
-    GLuint ebo;
-    glGenBuffers(1, &ebo);
-
-    GLuint indices[] = {
-        0 + 0, 0 + 1, 0 + 2,    0 + 2, 0 + 3, 0 + 0,        // front face
-        4 + 0, 4 + 1, 4 + 2,    4 + 2, 4 + 3, 4 + 0,        // back face
-        8 + 0, 8 + 1, 8 + 2,    8 + 2, 8 + 3, 8 + 0,        // left face
-        12 + 0, 12 + 1, 12 + 2,    12 + 2, 12 + 3, 12 + 0,  // right face
-        16 + 0, 16 + 1, 16 + 2,    16 + 2, 16 + 3, 16 + 0,  // top face
-        20 + 0, 20 + 1, 20 + 2,    20 + 2, 20 + 3, 20 + 0,  // bottom face
-    };
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    // Create / load texture
-    GLuint tex;
-    glGenTextures(1, &tex);
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glGenerateMipmap(GL_TEXTURE_2D);
-
-    int width, height;
-    unsigned char* image = SOIL_load_image("./assets/texture-atlas.png", &width, &height, 0, SOIL_LOAD_RGB);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
-
     // Create and compile the vertex shader
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &vertexShaderSrc, 0); // length 0 means opengl will figure it out for us
@@ -163,19 +72,10 @@ int main(void)
     glLinkProgram(shaderProgram);
     glUseProgram(shaderProgram);
 
-    // Specify the layout of the vertex data
-    GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
-    glEnableVertexAttribArray(posAttrib);
-    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(offsetof(Vertex, position)));
-
-    GLint texAttrib = glGetAttribLocation(shaderProgram, "texcoord");
-    glEnableVertexAttribArray(texAttrib);
-    glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(offsetof(Vertex, uv)));
-
     // Bind shader uniforms
     // Set up projection
     glm::mat4 view = glm::lookAt(
-        glm::vec3(3.0f, 3.0f, 3.0f),
+        glm::vec3(3.0f, 3.0f, 2.0f),
         glm::vec3(0.0f, 0.0f, 0.0f),
         glm::vec3(0.0f, 0.0f, 1.0f)
     );
@@ -190,6 +90,10 @@ int main(void)
 
     glEnable(GL_DEPTH_TEST);
 
+    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+    Chunk c = Chunk({ 0, 0, 0 });
+
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
@@ -202,7 +106,8 @@ int main(void)
         auto t_now = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration_cast<std::chrono::duration<float>>(t_now - t_start).count();
 
-        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+        //glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+        c.render();
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
@@ -214,11 +119,6 @@ int main(void)
     glDeleteProgram(shaderProgram);
     glDeleteShader(fragmentShader);
     glDeleteShader(vertexShader);
-
-    glDeleteBuffers(1, &ebo);
-    glDeleteBuffers(1, &vbo);
-
-    glDeleteVertexArrays(1, &vao);
 
     glfwTerminate();
     return 0;
@@ -246,24 +146,4 @@ std::string loadShader(std::string path) {
     buffer << file.rdbuf();
 
     return buffer.str();
-}
-
-// @param vertIndex - top-left, top-right, bottom-right, bottom-left
-glm::vec2 getTextureCoords(blockType type, int vertIndex) {
-    glm::vec2 coord = {0.0f, 0.0f};
-
-    switch (type) {
-        case DIRT:          coord = { 0.0f, 0.0f }; break;
-        case GRASS:         coord = { 1 * blockTextureSize, 0.0f }; break;
-        case GRASS_SIDE:    coord = { 2 * blockTextureSize, 0.0f }; break;
-        case STONE:         coord = { 3 * blockTextureSize, 0.0f }; break;
-        case COBBLESTONE:   coord = { 4 * blockTextureSize, 0.0f }; break;
-    }
-
-    switch (vertIndex) {
-        case 0: return coord;
-        case 1: return coord + glm::vec2(blockTextureSize, 0.0f);
-        case 2: return coord + glm::vec2(blockTextureSize, blockTextureSize);
-        default: return coord + glm::vec2(0.0f, blockTextureSize);
-    }
 }
