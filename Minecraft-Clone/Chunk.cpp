@@ -1,5 +1,6 @@
 #include "Chunk.h"
 #include <SOIL2/SOIL2.h>
+#include "AssetManager.h"
 
 Chunk::Chunk(glm::vec3 _coords)
 {
@@ -20,9 +21,16 @@ Chunk::~Chunk()
 
 void Chunk::render()
 {
+	// bind the correct texture before rendering
+	glBindTexture(GL_TEXTURE_2D, AssetManager::getTextureId("texture-atlas"));
+
+	// bind vertex array -> draw vertices -> un-bind vertex array
 	glBindVertexArray(vao);
 	glDrawElements(GL_TRIANGLES, (GLsizei)indices.size(), GL_UNSIGNED_INT, 0);
 	glBindVertexArray(0);
+
+	// un-bind texture
+	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void Chunk::generateChunk()
@@ -68,19 +76,6 @@ void Chunk::initShaderVars()
 
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(offsetof(Vertex, uv)));
-
-	GLuint tex;
-	glGenTextures(1, &tex);
-	glBindTexture(GL_TEXTURE_2D, tex);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glGenerateMipmap(GL_TEXTURE_2D);
-
-	int width, height;
-	unsigned char* image = SOIL_load_image("./assets/texture-atlas.png", &width, &height, 0, SOIL_LOAD_RGB);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
 }
 
 void Chunk::insertVertsAndInds(Block& b)

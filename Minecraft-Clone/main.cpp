@@ -8,6 +8,7 @@
 #include <sstream>
 
 #include "Chunk.h"
+#include "AssetManager.h"
 
 const int WINDOW_WIDTH = 640, WINDOW_HEIGHT = 480;
 
@@ -93,6 +94,8 @@ int main(void)
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     Chunk c = Chunk({ 0, 0, 0 });
+
+    AssetManager::loadTexture("./assets/texture-atlas.png");
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
