@@ -9,11 +9,14 @@
 
 #include "Chunk.h"
 #include "AssetManager.h"
+#include "Camera.h"
 
 const int WINDOW_WIDTH = 640, WINDOW_HEIGHT = 480;
+Camera cam = Camera();
 
 void processInput(GLFWwindow* window);
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height);
+void cursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 std::string loadShader(std::string path);
 
 int main(void)
@@ -42,6 +45,7 @@ int main(void)
     /* Make the window's context current */
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, frameBufferSizeCallback);
+    glfwSetCursorPosCallback(window, cursorPosCallback);
 
     // setup GLAD
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
@@ -75,21 +79,15 @@ int main(void)
 
     // Bind shader uniforms
     // Set up projection
-    glm::mat4 view = glm::lookAt(
-        glm::vec3(3.0f, 3.0f, 2.0f),
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec3(0.0f, 0.0f, 1.0f)
-    );
     GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(cam.getView()));
 
     glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT, 1.0f, 10.0f);
     GLint projLoc = glGetUniformLocation(shaderProgram, "proj");
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
 
-    auto t_start = std::chrono::high_resolution_clock::now();
-
     glEnable(GL_DEPTH_TEST);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
@@ -97,17 +95,29 @@ int main(void)
 
     AssetManager::loadTexture("./assets/texture-atlas.png");
 
+    const int targetFPS = 60;
+    const double frameDuration = 1.0 / targetFPS;
+
+    auto t_previous = std::chrono::high_resolution_clock::now();
+
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
+        auto t_frameStart = std::chrono::high_resolution_clock::now();
+
+        // Calculate delta time from previous frame
+        std::chrono::duration<double> t_deltaTime = t_frameStart - t_previous;
+        t_previous = t_frameStart;
+
+        double deltaSeconds = t_deltaTime.count();
         processInput(window);
+        if (cam.update(deltaSeconds)) {
+            glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(cam.getView()));
+        }
 
         /* Render here */
         glClearColor(0.6f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        auto t_now = std::chrono::high_resolution_clock::now();
-        float time = std::chrono::duration_cast<std::chrono::duration<float>>(t_now - t_start).count();
 
         //glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
         c.render();
@@ -117,6 +127,17 @@ int main(void)
 
         /* Poll for and process events */
         glfwPollEvents();
+
+        // Calculate the time taken to render & poll events
+        auto t_frameEnd = std::chrono::high_resolution_clock::now();
+
+        std::chrono::duration<double> t_frameTime = t_frameEnd - t_frameStart;
+
+        // Wait the rest of the frame to reach target FPS
+        while (t_frameTime.count() < frameDuration) {
+            t_frameEnd = std::chrono::high_resolution_clock::now();
+            t_frameTime = t_frameEnd - t_frameStart;
+        }
     }
 
     glDeleteProgram(shaderProgram);
@@ -128,14 +149,35 @@ int main(void)
 }
 
 void processInput(GLFWwindow* window) {
+    // exit game
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
+    }
+
+    // camera controls
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+        cam.addMoveInput({ 0, 1, 0 });
+    }
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+        cam.addMoveInput({ 0, -1, 0 });
+    }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+        cam.addMoveInput({ 1, 0, 0 });
+    }
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+        cam.addMoveInput({ -1, 0, 0 });
     }
 }
 
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height) {
     // tell OpenGL that the new rendering area is at position (0, 0) and extents (width, height)
     glViewport(0, 0, width, height);
+}
+
+void cursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
+    int halfWidth = WINDOW_WIDTH / 2, halfHeight = WINDOW_HEIGHT / 2;
+    cam.addLookInput({xpos - halfWidth, halfHeight - ypos});
+    glfwSetCursorPos(window, halfWidth, halfHeight);
 }
 
 std::string loadShader(std::string path) {

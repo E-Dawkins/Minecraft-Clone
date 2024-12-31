@@ -145,6 +145,7 @@
     <ClInclude Include="AssetManager.h" />
     <ClInclude Include="Block.h" />
     <ClInclude Include="BlockTypes.h" />
+    <ClInclude Include="Camera.h" />
     <ClInclude Include="Chunk.h" />
     <ClInclude Include="dependencies\include\glad\glad.h" />
     <ClInclude Include="dependencies\include\GLFW\glfw3.h" />
