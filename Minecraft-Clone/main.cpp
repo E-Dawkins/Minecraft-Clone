@@ -89,6 +89,9 @@ int main(void)
     glEnable(GL_DEPTH_TEST);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     Chunk c = Chunk({ 0, 0, 0 });

@@ -82,12 +82,12 @@ void Chunk::insertVertsAndInds(Block& b)
 {
 	auto insertIndices = [&]() {
 		GLuint offset = (GLuint)(vertices.size() - 4);
-		indices.emplace_back(offset + 0);
+		indices.emplace_back(offset + 2);
 		indices.emplace_back(offset + 1);
-		indices.emplace_back(offset + 2);
-		indices.emplace_back(offset + 2);
-		indices.emplace_back(offset + 3);
 		indices.emplace_back(offset + 0);
+		indices.emplace_back(offset + 0);
+		indices.emplace_back(offset + 3);
+		indices.emplace_back(offset + 2);
 	};
 
 	// front face
