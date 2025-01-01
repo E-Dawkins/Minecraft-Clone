@@ -435,3 +435,7 @@ FodyWeavers.xsd
 # Additional files built by Visual Studio
 
 # End of https://www.toptal.com/developers/gitignore/api/c++,visualstudio
+
+# Include libraries in dependencies folder
+!Minecraft-Clone/dependencies/lib/*.lib
+!Minecraft-Clone/dependencies/lib/*.dll
