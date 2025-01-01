@@ -2,10 +2,9 @@
 #include <SOIL2/SOIL2.h>
 #include "AssetManager.h"
 
-Chunk::Chunk(glm::vec3 _coords)
+Chunk::Chunk(glm::vec2 _chunkIndex)
 {
-	coords = _coords;
-	extentsMax = _coords + (glm::vec3(CHUNK_X, CHUNK_Y, CHUNK_Z) * 0.5f);
+	startPos = glm::vec3(_chunkIndex, 0) * chunkSize;
 
 	generateChunk();
 	initShaderVars();
@@ -36,18 +35,18 @@ void Chunk::render()
 void Chunk::generateChunk()
 {
 	// for now just generate a platform of blocks
-	for (GLuint x = 0; x < CHUNK_X; x++) {
-		for (GLuint y = 0; y < CHUNK_Y; y++) {
-			for (GLuint z = 0; z < CHUNK_Z; z++) {
-				Block b = { coords + glm::vec3(x, y, z), GRASS };
+	for (GLuint x = 0; x < chunkSize.x; x++) {
+		for (GLuint y = 0; y < chunkSize.y; y++) {
+			for (GLuint z = 0; z < chunkSize.z; z++) {
+				Block b = { startPos + glm::vec3(x, y, z), GRASS };
 				blocks[x][y][z] = b;
 			}
 		}
 	}
 
-	for (GLuint x = 0; x < CHUNK_X; x++) {
-		for (GLuint y = 0; y < CHUNK_Y; y++) {
-			for (GLuint z = 0; z < CHUNK_Z; z++) {
+	for (GLuint x = 0; x < chunkSize.x; x++) {
+		for (GLuint y = 0; y < chunkSize.y; y++) {
+			for (GLuint z = 0; z < chunkSize.z; z++) {
 				insertVertsAndInds(blocks[x][y][z]);
 			}
 		}
@@ -150,16 +149,14 @@ bool Chunk::isFaceVisible(glm::vec3& pos, BlockFace face)
 	glm::vec3 offset = faceNormals[face];
 	glm::vec3 queryPos = pos + offset;
 
-	if (queryPos == glm::vec3(0, 0, 1)) {
-		int a = 4;
-	}
-
-	if (queryPos.x < coords.x || queryPos.x > extentsMax.x ||
-		queryPos.y < coords.y || queryPos.y > extentsMax.y ||
-		queryPos.z < coords.z || queryPos.z > extentsMax.z) {
+	if (queryPos.x < 0 || queryPos.x >= chunkSize.x ||
+		queryPos.y < 0 || queryPos.y >= chunkSize.y ||
+		queryPos.z < 0 || queryPos.z >= chunkSize.z) {
 		return true; // default to true if querying outside chunk extents
 	}
 
+	// wrap queryPos before indexing into blocks array
+	queryPos = glm::mod(queryPos, chunkSize);
 	if (blocks[(int)queryPos.x][(int)queryPos.y][(int)queryPos.z].type == AIR) {
 		return true;
 	}

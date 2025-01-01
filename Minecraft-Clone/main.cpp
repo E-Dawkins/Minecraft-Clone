@@ -11,8 +11,8 @@
 #include "AssetManager.h"
 #include "Camera.h"
 
-const int WINDOW_WIDTH = 640, WINDOW_HEIGHT = 480;
-Camera cam = Camera();
+const int WINDOW_WIDTH = 1280, WINDOW_HEIGHT = 960;
+Camera cam = Camera({ 0, 0, 10 }, { 1, 0, 0 });
 
 void processInput(GLFWwindow* window);
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height);
@@ -82,7 +82,7 @@ int main(void)
     GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(cam.getView()));
 
-    glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT, 1.0f, 10.0f);
+    glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT, 0.1f, 100.0f);
     GLint projLoc = glGetUniformLocation(shaderProgram, "proj");
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
 
@@ -94,7 +94,9 @@ int main(void)
 
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-    Chunk c = Chunk({ 0, 0, 0 });
+    Chunk c = Chunk({ 0, 0 });
+    Chunk c2 = Chunk({ 2, 0 });
+    Chunk c3 = Chunk({ 3, 1 });
 
     AssetManager::loadTexture("./assets/texture-atlas.png");
 
@@ -109,10 +111,10 @@ int main(void)
         auto t_frameStart = std::chrono::high_resolution_clock::now();
 
         // Calculate delta time from previous frame
-        std::chrono::duration<double> t_deltaTime = t_frameStart - t_previous;
+        std::chrono::duration<float> t_deltaTime = t_frameStart - t_previous;
         t_previous = t_frameStart;
 
-        double deltaSeconds = t_deltaTime.count();
+        float deltaSeconds = t_deltaTime.count();
         processInput(window);
         if (cam.update(deltaSeconds)) {
             glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(cam.getView()));
@@ -124,6 +126,8 @@ int main(void)
 
         //glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
         c.render();
+        c2.render();
+        c3.render();
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
@@ -134,7 +138,7 @@ int main(void)
         // Calculate the time taken to render & poll events
         auto t_frameEnd = std::chrono::high_resolution_clock::now();
 
-        std::chrono::duration<double> t_frameTime = t_frameEnd - t_frameStart;
+        std::chrono::duration<float> t_frameTime = t_frameEnd - t_frameStart;
 
         // Wait the rest of the frame to reach target FPS
         while (t_frameTime.count() < frameDuration) {
@@ -177,9 +181,16 @@ void frameBufferSizeCallback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
+bool firstMouse = true;
 void cursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
-    int halfWidth = WINDOW_WIDTH / 2, halfHeight = WINDOW_HEIGHT / 2;
-    cam.addLookInput({xpos - halfWidth, halfHeight - ypos});
+    constexpr int halfWidth = WINDOW_WIDTH / 2, halfHeight = WINDOW_HEIGHT / 2;
+    
+    if (!firstMouse) {
+        cam.addLookInput({ xpos - halfWidth, halfHeight - ypos });
+    } else {
+        firstMouse = false;
+    }
+
     glfwSetCursorPos(window, halfWidth, halfHeight);
 }
 

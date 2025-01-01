@@ -5,7 +5,15 @@
 class Camera 
 {
 public:
-	Camera() {
+	Camera(glm::vec3 pos, glm::vec3 dir) {
+		position = pos;
+
+		dir = glm::normalize(dir);
+		forward = dir;
+		right = glm::normalize(glm::cross(forward, up));
+		pitch = glm::degrees(asin(dir.z));
+		yaw = (pitch == 0 ? 0 : glm::degrees(acos(dir.x)) / pitch);
+
 		calculateView();
 	}
 
@@ -74,7 +82,7 @@ private:
 	glm::vec3 position = { 3, 0, 0 };
 	glm::vec3 forward = { -1, 0, 0 };
 	glm::vec3 up = { 0, 0, 1 };
-	glm::vec3 right = glm::normalize(glm::cross(forward, up));
+	glm::vec3 right = { 0, 0, 0 };
 
 	glm::mat4 view;
 

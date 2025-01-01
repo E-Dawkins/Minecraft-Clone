@@ -10,14 +10,14 @@ struct Vertex {
     glm::vec2 uv;
 };
 
-constexpr GLuint CHUNK_X = 2,
-                 CHUNK_Y = 2,
-                 CHUNK_Z = 1;
+constexpr glm::vec3 chunkSize = {16, 16, 1};
+constexpr glm::vec3 extentsMin = { -0.5f, -0.5f, -0.5f };
+constexpr glm::vec3 extentsMax = extentsMin + chunkSize;
 
 class Chunk
 {
 public:
-    Chunk(glm::vec3 _coords);
+    Chunk(glm::vec2 _chunkIndex);
     ~Chunk();
 
     void render();
@@ -29,14 +29,12 @@ private:
     void insertVertsAndInds(Block& b);
     bool isFaceVisible(glm::vec3& pos, BlockFace face);
 
-public:
-    glm::vec3 coords = { 0, 0, 0 };
-    glm::vec3 extentsMax = { 0, 0, 0 };
-
 private:
+    glm::vec3 startPos = { 0, 0, 0 };
+
     GLuint vao, vbo, ebo;
     std::vector<Vertex> vertices = {};
     std::vector<GLuint> indices = {};
-    Block blocks[CHUNK_X][CHUNK_Y][CHUNK_Z] = {};
+    Block blocks[(GLuint)chunkSize.x][(GLuint)chunkSize.y][(GLuint)chunkSize.z] = {};
 };
 
