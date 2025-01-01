@@ -12,7 +12,7 @@ public:
 		forward = dir;
 		right = glm::normalize(glm::cross(forward, up));
 		pitch = glm::degrees(asin(dir.z));
-		yaw = (pitch == 0 ? 0 : glm::degrees(acos(dir.x)) / pitch);
+		yaw = glm::degrees(atan2(dir.y, dir.x));
 
 		calculateView();
 	}
