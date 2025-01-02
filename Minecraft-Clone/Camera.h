@@ -91,6 +91,7 @@ private:
 
 	float yaw = 180, pitch = 0;
 
+public:
 	// config
 	float moveSpeed = 5.0f;
 	float sensitivity = 0.1f;

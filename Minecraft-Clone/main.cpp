@@ -19,6 +19,7 @@ GLuint numRenderingModes = 2; // normal, wire-frame
 void processInput(GLFWwindow* window);
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height);
 void cursorPosCallback(GLFWwindow* window, double xpos, double ypos);
+void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 std::string loadShader(std::string path);
 void setRenderingMode(GLuint newMode);
 
@@ -49,6 +50,7 @@ int main(void)
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, frameBufferSizeCallback);
     glfwSetCursorPosCallback(window, cursorPosCallback);
+    glfwSetScrollCallback(window, scrollCallback);
 
     // setup GLAD
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
@@ -229,6 +231,10 @@ void cursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
     }
 
     glfwSetCursorPos(window, halfWidth, halfHeight);
+}
+
+void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
+    cam.moveSpeed = std::max(cam.moveSpeed + (float)yoffset, 1.0f);
 }
 
 std::string loadShader(std::string path) {
