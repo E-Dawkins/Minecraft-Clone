@@ -25,7 +25,7 @@ void Chunk::render()
 
 	// bind vertex array -> draw vertices -> un-bind vertex array
 	glBindVertexArray(vao);
-	glDrawElements(GL_TRIANGLES, (GLsizei)indices.size(), GL_UNSIGNED_INT, 0);
+	glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, faceData.size());
 	glBindVertexArray(0);
 
 	// un-bind texture
@@ -47,7 +47,7 @@ void Chunk::generateChunk()
 	for (GLuint x = 0; x < chunkSize.x; x++) {
 		for (GLuint y = 0; y < chunkSize.y; y++) {
 			for (GLuint z = 0; z < chunkSize.z; z++) {
-				insertVertsAndInds(blocks[x][y][z]);
+				insertFaceData(blocks[x][y][z]);
 			}
 		}
 	}
@@ -55,6 +55,19 @@ void Chunk::generateChunk()
 
 void Chunk::initShaderVars()
 {
+	const GLuint vertexSize = 5 * sizeof(float);
+	float quadVertices[] = {
+		-0.5f, -0.5f, 0.0f,		0.0f, 1.0f,
+		 0.5f, -0.5f, 0.0f,		1.0f, 1.0f,
+		 0.5f,  0.5f, 0.0f,		1.0f, 0.0f,
+		-0.5f,  0.5f, 0.0f,		0.0f, 0.0f
+	};
+
+	GLuint quadIndices[] = {
+		0, 1, 2,
+		2, 3, 0
+	};
+
 	// Create vertex array object
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
@@ -62,85 +75,97 @@ void Chunk::initShaderVars()
 	// Create and fill vertex buffer object
 	glGenBuffers(1, &vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * vertices.size(), vertices.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
 
 	// Create and fill element buffer object
 	glGenBuffers(1, &ebo);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * indices.size(), indices.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quadIndices), quadIndices, GL_STATIC_DRAW);
 
-	// Specify the layout of the vertex data
+	// Position (main vbo)
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, vertexSize, 0);
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(offsetof(Vertex, position)));
 
+	// Texcoord (main vbo)
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, vertexSize, (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(offsetof(Vertex, uv)));
+	
+	GLuint faceDataBuffer;
+	glGenBuffers(1, &faceDataBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, faceDataBuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(FaceData) * faceData.size(), faceData.data(), GL_STATIC_DRAW);
+
+	// Offset (per-instance data)
+	glBindBuffer(GL_ARRAY_BUFFER, faceDataBuffer);
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(FaceData), (void*)0);
+	glVertexAttribDivisor(2, 1); // one offset per-face
+
+	// Id (per-instance data)
+	glEnableVertexAttribArray(3);
+	glVertexAttribIPointer(3, 1, GL_INT, sizeof(FaceData), (void*)offsetof(FaceData, id));
+	glVertexAttribDivisor(3, 1); // one id per-face
+
+	// Texcoord Start
+	glEnableVertexAttribArray(4);
+	glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, sizeof(FaceData), (void*)offsetof(FaceData, texcoordStart));
+	glVertexAttribDivisor(4, 1); // one texcoord start per-face
 }
 
-void Chunk::insertVertsAndInds(Block& b)
+void Chunk::insertFaceData(Block& b)
 {
-	auto insertIndices = [&]() {
-		GLuint offset = (GLuint)(vertices.size() - 4);
-		indices.emplace_back(offset + 2);
-		indices.emplace_back(offset + 1);
-		indices.emplace_back(offset + 0);
-		indices.emplace_back(offset + 0);
-		indices.emplace_back(offset + 3);
-		indices.emplace_back(offset + 2);
-	};
-
 	// front face
 	if (isFaceVisible(b.position, FRONT)) {
-		vertices.push_back({ b.position + glm::vec3(-0.5f, -0.5f,  0.5f), b.getTextureCoords(FRONT, 0) });
-		vertices.push_back({ b.position + glm::vec3( 0.5f, -0.5f,  0.5f), b.getTextureCoords(FRONT, 1) });
-		vertices.push_back({ b.position + glm::vec3( 0.5f, -0.5f, -0.5f), b.getTextureCoords(FRONT, 2) });
-		vertices.push_back({ b.position + glm::vec3(-0.5f, -0.5f, -0.5f), b.getTextureCoords(FRONT, 3) });
-		insertIndices();
+		faceData.push_back({
+			b.position + faceNormals[FRONT] * 0.5f,
+			FRONT,
+			b.getTextureCoords(FRONT, 0)
+		});
 	}
 
 	// back face
 	if (isFaceVisible(b.position, BACK)) {
-		vertices.push_back({ b.position + glm::vec3( 0.5f,  0.5f,  0.5f), b.getTextureCoords(BACK, 0) });
-		vertices.push_back({ b.position + glm::vec3(-0.5f,  0.5f,  0.5f), b.getTextureCoords(BACK, 1) });
-		vertices.push_back({ b.position + glm::vec3(-0.5f,  0.5f, -0.5f), b.getTextureCoords(BACK, 2) });
-		vertices.push_back({ b.position + glm::vec3( 0.5f,  0.5f, -0.5f), b.getTextureCoords(BACK, 3) });
-		insertIndices();
+		faceData.push_back({
+			b.position + faceNormals[BACK] * 0.5f,
+			BACK,
+			b.getTextureCoords(BACK, 0)
+		});
 	}
 
 	// left face
 	if (isFaceVisible(b.position, LEFT)) {
-		vertices.push_back({ b.position + glm::vec3(-0.5f,  0.5f,  0.5f), b.getTextureCoords(LEFT, 0) });
-		vertices.push_back({ b.position + glm::vec3(-0.5f, -0.5f,  0.5f), b.getTextureCoords(LEFT, 1) });
-		vertices.push_back({ b.position + glm::vec3(-0.5f, -0.5f, -0.5f), b.getTextureCoords(LEFT, 2) });
-		vertices.push_back({ b.position + glm::vec3(-0.5f,  0.5f, -0.5f), b.getTextureCoords(LEFT, 3) });
-		insertIndices();
+		faceData.push_back({
+			b.position + faceNormals[LEFT] * 0.5f,
+			LEFT,
+			b.getTextureCoords(LEFT, 0)
+		});
 	}
 
 	// right face
 	if (isFaceVisible(b.position, RIGHT)) {
-		vertices.push_back({ b.position + glm::vec3( 0.5f, -0.5f,  0.5f), b.getTextureCoords(RIGHT, 0) });
-		vertices.push_back({ b.position + glm::vec3( 0.5f,  0.5f,  0.5f), b.getTextureCoords(RIGHT, 1) });
-		vertices.push_back({ b.position + glm::vec3( 0.5f,  0.5f, -0.5f), b.getTextureCoords(RIGHT, 2) });
-		vertices.push_back({ b.position + glm::vec3( 0.5f, -0.5f, -0.5f), b.getTextureCoords(RIGHT, 3) });
-		insertIndices();
+		faceData.push_back({
+			b.position + faceNormals[RIGHT] * 0.5f,
+			RIGHT,
+			b.getTextureCoords(RIGHT, 0)
+		});
 	}
 
 	// top face
 	if (isFaceVisible(b.position, TOP)) {
-		vertices.push_back({ b.position + glm::vec3(-0.5f,  0.5f,  0.5f), b.getTextureCoords(TOP, 0) });
-		vertices.push_back({ b.position + glm::vec3( 0.5f,  0.5f,  0.5f), b.getTextureCoords(TOP, 1) });
-		vertices.push_back({ b.position + glm::vec3( 0.5f, -0.5f,  0.5f), b.getTextureCoords(TOP, 2) });
-		vertices.push_back({ b.position + glm::vec3(-0.5f, -0.5f,  0.5f), b.getTextureCoords(TOP, 3) });
-		insertIndices();
+		faceData.push_back({
+			b.position + faceNormals[TOP] * 0.5f,
+			TOP,
+			b.getTextureCoords(TOP, 0)
+		});
 	}
 
 	// bottom face
 	if (isFaceVisible(b.position, BOTTOM)) {
-		vertices.push_back({ b.position + glm::vec3(-0.5f, -0.5f, -0.5f), b.getTextureCoords(BOTTOM, 0) });
-		vertices.push_back({ b.position + glm::vec3( 0.5f, -0.5f, -0.5f), b.getTextureCoords(BOTTOM, 1) });
-		vertices.push_back({ b.position + glm::vec3( 0.5f,  0.5f, -0.5f), b.getTextureCoords(BOTTOM, 2) });
-		vertices.push_back({ b.position + glm::vec3(-0.5f,  0.5f, -0.5f), b.getTextureCoords(BOTTOM, 3) });
-		insertIndices();
+		faceData.push_back({
+			b.position + faceNormals[BOTTOM] * 0.5f,
+			BOTTOM,
+			b.getTextureCoords(BOTTOM, 0)
+		});
 	}
 }
 
@@ -149,9 +174,9 @@ bool Chunk::isFaceVisible(glm::vec3& pos, BlockFace face)
 	glm::vec3 offset = faceNormals[face];
 	glm::vec3 queryPos = pos + offset;
 
-	if (queryPos.x < 0 || queryPos.x >= chunkSize.x ||
-		queryPos.y < 0 || queryPos.y >= chunkSize.y ||
-		queryPos.z < 0 || queryPos.z >= chunkSize.z) {
+	if (queryPos.x < startPos.x || queryPos.x >= startPos.x + chunkSize.x ||
+		queryPos.y < startPos.y || queryPos.y >= startPos.y + chunkSize.y ||
+		queryPos.z < startPos.z || queryPos.z >= startPos.z + chunkSize.z) {
 		return true; // default to true if querying outside chunk extents
 	}
 

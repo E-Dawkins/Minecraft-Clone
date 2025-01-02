@@ -63,11 +63,26 @@ int main(void)
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &vertexShaderSrc, 0); // length 0 means opengl will figure it out for us
     glCompileShader(vertexShader);
+    GLint success;
+    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        char infoLog[512];
+        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+        std::cerr << "ERROR::VERTEX_SHADER::COMPILATION_FAILED\n" << infoLog << std::endl;
+    }
+
 
     // Create and compile the fragment shader
     GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragmentShader, 1, &fragmentShaderSrc, 0); // length 0 means opengl will figure it out for us
     glCompileShader(fragmentShader);
+    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        char infoLog[512];
+        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+        std::cerr << "ERROR::FRAGMENT_SHADER::COMPILATION_FAILED\n" << infoLog << std::endl;
+    }
+
 
     // Link vertex and fragment shaders to a shader program
     GLuint shaderProgram = glCreateProgram();
@@ -82,7 +97,7 @@ int main(void)
     GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(cam.getView()));
 
-    glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT, 0.1f, 100.0f);
+    glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT, 0.1f, 1000.0f);
     GLint projLoc = glGetUniformLocation(shaderProgram, "proj");
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
 
@@ -94,9 +109,13 @@ int main(void)
 
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-    Chunk c = Chunk({ 0, 0 });
-    Chunk c2 = Chunk({ 2, 0 });
-    Chunk c3 = Chunk({ 3, 1 });
+    const int countX = 5, countY = 5;
+    Chunk* chunks[countX][countY] = {};
+    for (int x = 0; x < countX; x++) {
+        for (int y = 0; y < countY; y++) {
+            chunks[x][y] = new Chunk({ x, y });
+        }
+    }
 
     AssetManager::loadTexture("./assets/texture-atlas.png");
 
@@ -124,10 +143,11 @@ int main(void)
         glClearColor(0.6f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        //glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
-        c.render();
-        c2.render();
-        c3.render();
+        for (int x = 0; x < countX; x++) {
+            for (int y = 0; y < countY; y++) {
+                chunks[x][y]->render();
+            }
+        }
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
@@ -144,6 +164,12 @@ int main(void)
         while (t_frameTime.count() < frameDuration) {
             t_frameEnd = std::chrono::high_resolution_clock::now();
             t_frameTime = t_frameEnd - t_frameStart;
+        }
+    }
+
+    for (int x = 0; x < countX; x++) {
+        for (int y = 0; y < countY; y++) {
+            delete chunks[x][y];
         }
     }
 
