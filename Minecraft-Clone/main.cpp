@@ -13,11 +13,14 @@
 
 const int WINDOW_WIDTH = 1280, WINDOW_HEIGHT = 960;
 Camera cam = Camera({ 0, 0, 10 }, { 1, 0, 0 });
+GLuint renderingMode = 0;
+GLuint numRenderingModes = 2; // normal, wire-frame
 
 void processInput(GLFWwindow* window);
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height);
 void cursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 std::string loadShader(std::string path);
+void setRenderingMode(GLuint newMode);
 
 int main(void)
 {
@@ -104,10 +107,7 @@ int main(void)
     glEnable(GL_DEPTH_TEST);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
-
-    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    setRenderingMode(0); // set to default rendering mode
 
     const int countX = 5, countY = 5;
     Chunk* chunks[countX][countY] = {};
@@ -200,6 +200,17 @@ void processInput(GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
         cam.addMoveInput({ -1, 0, 0 });
     }
+
+    // rendering controls
+    static bool f1Pressed = false;
+    if (glfwGetKey(window, GLFW_KEY_F1) == GLFW_PRESS && !f1Pressed) {
+        setRenderingMode(renderingMode + 1);
+        f1Pressed = true;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_F1) == GLFW_RELEASE) {
+        f1Pressed = false;
+    }
 }
 
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height) {
@@ -231,4 +242,23 @@ std::string loadShader(std::string path) {
     buffer << file.rdbuf();
 
     return buffer.str();
+}
+
+void setRenderingMode(GLuint newMode) {
+    renderingMode = newMode % numRenderingModes;
+
+    switch (renderingMode) {
+        case 0: {
+            glEnable(GL_CULL_FACE);
+            glCullFace(GL_BACK);
+
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        } break;
+
+        case 1: {
+            glDisable(GL_CULL_FACE);
+
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        } break;
+    }
 }
