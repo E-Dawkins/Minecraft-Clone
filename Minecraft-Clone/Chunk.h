@@ -13,6 +13,7 @@ struct FaceData {
     glm::vec3 offset;
     int id;
     glm::vec2 texcoordStart;
+    glm::vec3 size;
 };
 
 class Chunk
@@ -23,8 +24,16 @@ public:
 
     void render();
 
+    // @returns Whether a position is within the chunk boundaries. [startPos -> startPos + chunkSize)
+    bool isPosInChunk(glm::vec3 pos);
+
+    // @returns Whether a position is within the chunk size. [0 -> chunkSize)
+    bool isPosInChunkSize(glm::vec3 pos);
+
 private:
     void generateChunk();
+    void generateFaces();
+    void optimizeFaces();
     void initShaderVars();
 
     void insertFaceData(Block& b);

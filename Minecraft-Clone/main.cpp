@@ -111,7 +111,7 @@ int main(void)
 
     setRenderingMode(0); // set to default rendering mode
 
-    const int countX = 5, countY = 5;
+    const int countX = 1, countY = 1;
     Chunk* chunks[countX][countY] = {};
     for (int x = 0; x < countX; x++) {
         for (int y = 0; y < countY; y++) {

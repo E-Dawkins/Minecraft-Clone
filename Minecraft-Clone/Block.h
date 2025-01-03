@@ -1,5 +1,6 @@
 #pragma once
 #include <glm/glm.hpp>
+#include <bitset>
 #include "BlockTypes.h"
 
 enum BlockFace {
@@ -34,5 +35,7 @@ public:
 public:
 	glm::vec3 position = {0, 0, 0};
 	BlockType type = AIR;
+
+	std::bitset<6> visibleFaces;
 };
 
