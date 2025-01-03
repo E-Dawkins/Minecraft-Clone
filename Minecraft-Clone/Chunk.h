@@ -13,7 +13,7 @@ struct FaceData {
     glm::vec3 offset;
     int id;
     glm::vec2 texcoordStart;
-    glm::vec3 size;
+    glm::vec3 size = glm::vec3(1);
 };
 
 class Chunk

@@ -206,7 +206,9 @@ void Chunk::optimizeFaces()
 	}
 
 	// and finally replace old face data with new optimized face data
-	faceData = optimizedFaces;
+	faceData.clear();
+	faceData.shrink_to_fit();
+	faceData.swap(optimizedFaces);
 }
 
 void Chunk::initShaderVars()
