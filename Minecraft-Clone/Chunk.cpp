@@ -42,7 +42,7 @@ void Chunk::generateChunk()
 	for (GLuint x = 0; x < chunkSize.x; x++) {
 		for (GLuint y = 0; y < chunkSize.y; y++) {
 			for (GLuint z = 0; z < chunkSize.z; z++) {
-				Block b = { startPos + glm::vec3(x, y, z), GRASS };
+				Block b = { startPos + glm::vec3(x, y, z), (BlockType)(std::rand() % TYPE_COUNT)};
 				blocks[x][y][z] = b;
 			}
 		}
@@ -77,8 +77,8 @@ void Chunk::optimizeFaces()
 		for (FaceData& f : optimizedFaces) {
 			// same id, now check if the optimized face contains the query face
 			if (f.id == refId) {
-				glm::vec3 faceMin = glm::mod(glm::trunc(f.offset - f.size * 0.5f), chunkSize);
-				glm::vec3 faceMax = glm::mod(glm::trunc(f.offset + f.size * 0.5f), chunkSize);
+				glm::vec3 faceMin = glm::trunc((f.offset - f.size * 0.5f) - startPos);
+				glm::vec3 faceMax = glm::trunc((f.offset + f.size * 0.5f) - startPos);
 				if (queryPos.x >= faceMin.x && queryPos.x <= faceMax.x &&
 					queryPos.y >= faceMin.y && queryPos.y <= faceMax.y &&
 					queryPos.z >= faceMin.z && queryPos.z <= faceMax.z) {
@@ -150,7 +150,7 @@ void Chunk::optimizeFaces()
 			glm::vec3 queryPos = currentPos + secondAxis * i;
 
 			// check all faces along the -firstAxis
-			bool allFacesValid = true;
+			bool allFacesValid = (firstAxisCount != 0);
 			for (float j = 1; j <= firstAxisCount; j++) {
 				glm::vec3 checkPos = queryPos - firstAxis * j;
 
