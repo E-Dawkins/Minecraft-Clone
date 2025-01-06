@@ -3,7 +3,7 @@
 #include <bitset>
 #include "BlockTypes.h"
 
-enum BlockFace {
+enum BlockFace : int {
 	FRONT = 0,
 	BACK,
 	LEFT,

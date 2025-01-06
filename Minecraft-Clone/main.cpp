@@ -12,7 +12,7 @@
 #include "Camera.h"
 
 const int WINDOW_WIDTH = 1280, WINDOW_HEIGHT = 960;
-Camera cam = Camera({ 0, 0, 10 }, { 1, 0, 0 });
+Camera cam = Camera({ 0, 0, 20 }, { 1, 1, 0 });
 GLuint renderingMode = 0;
 GLuint numRenderingModes = 2; // normal, wire-frame
 
@@ -111,7 +111,7 @@ int main(void)
 
     setRenderingMode(0); // set to default rendering mode
 
-    const int countX = 10, countY = 10;
+    const int countX = 5, countY = 5;
     Chunk* chunks[countX][countY] = {};
     for (int x = 0; x < countX; x++) {
         for (int y = 0; y < countY; y++) {
@@ -142,7 +142,7 @@ int main(void)
         }
 
         /* Render here */
-        glClearColor(0.6f, 0.0f, 0.0f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         for (int x = 0; x < countX; x++) {

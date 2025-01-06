@@ -41,10 +41,11 @@ void Chunk::generateChunk()
 	// for now just generate a platform of blocks
 	for (GLuint x = 0; x < chunkSize.x; x++) {
 		for (GLuint y = 0; y < chunkSize.y; y++) {
-			for (GLuint z = 0; z < chunkSize.z; z++) {
-				Block b = { startPos + glm::vec3(x, y, z), (BlockType)(std::rand() % TYPE_COUNT)};
-				blocks[x][y][z] = b;
-			}
+			GLuint z = (sin(glm::radians(startPos.x + x)) + cos(glm::radians(startPos.y + y))) * chunkSize.z;
+			z = glm::clamp(z, (GLuint)0, (GLuint)(chunkSize.z - 1));
+
+			Block b = { startPos + glm::vec3(x, y, z), GRASS };
+			blocks[x][y][z] = b;
 		}
 	}
 }
@@ -77,8 +78,9 @@ void Chunk::optimizeFaces()
 		for (FaceData& f : optimizedFaces) {
 			// same id, now check if the optimized face contains the query face
 			if (f.id == refId) {
-				glm::vec3 faceMin = glm::trunc((f.offset - f.size * 0.5f) - startPos);
-				glm::vec3 faceMax = glm::trunc((f.offset + f.size * 0.5f) - startPos);
+				glm::vec3 blockPos = getBlockPosFromFace(f.offset, f.id);
+				glm::vec3 faceMin = blockPos - f.size * 0.5f;
+				glm::vec3 faceMax = blockPos + f.size * 0.5f;
 				if (queryPos.x >= faceMin.x && queryPos.x <= faceMax.x &&
 					queryPos.y >= faceMin.y && queryPos.y <= faceMax.y &&
 					queryPos.z >= faceMin.z && queryPos.z <= faceMax.z) {
@@ -116,7 +118,8 @@ void Chunk::optimizeFaces()
 		FaceData currentFace = facesToCheck.front();
 		facesToCheck.pop_front();
 
-		glm::vec3 currentPos = glm::trunc(currentFace.offset - startPos);
+
+		glm::vec3 currentPos = getBlockPosFromFace(currentFace.offset, currentFace.id);
 		Block& currentBlock = blocks[(int)currentPos.x][(int)currentPos.y][(int)currentPos.z];
 
 		glm::vec3 min = currentPos;
@@ -354,6 +357,11 @@ bool Chunk::isFaceVisible(glm::vec3& pos, BlockFace face)
 	}
 
 	return false;
+}
+
+glm::vec3 Chunk::getBlockPosFromFace(glm::vec3& facePos, BlockFace face) {
+	// shift facePos to [0-chunkSize], then offset by the face normal
+	return facePos - startPos - (faceNormals[face] * 0.5f);
 }
 
 bool Chunk::isPosInChunk(glm::vec3 pos) {
