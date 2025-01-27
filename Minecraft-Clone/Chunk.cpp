@@ -1,8 +1,8 @@
 #include "Chunk.h"
 #include <SOIL2/SOIL2.h>
 #include "AssetManager.h"
-
 #include <list>
+#include "WorldGenerator.h"
 
 Chunk::Chunk(glm::vec2 _chunkIndex)
 {
@@ -41,11 +41,14 @@ void Chunk::generateChunk()
 	// for now just generate a platform of blocks
 	for (GLuint x = 0; x < chunkSize.x; x++) {
 		for (GLuint y = 0; y < chunkSize.y; y++) {
-			GLuint z = (sin(glm::radians(startPos.x + x)) + cos(glm::radians(startPos.y + y))) * chunkSize.z;
-			z = glm::clamp(z, (GLuint)0, (GLuint)(chunkSize.z - 1));
+			for (GLuint z = 0; z < chunkSize.z; z++) {
+				glm::vec3 position = startPos + glm::vec3(x, y, z);
 
-			Block b = { startPos + glm::vec3(x, y, z), GRASS };
-			blocks[x][y][z] = b;
+				blocks[x][y][z] = {
+					position,
+					WorldGenerator::getBlockTypeAtPos(position)
+				};
+			}
 		}
 	}
 }

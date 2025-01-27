@@ -5,7 +5,7 @@
 #include "Block.h"
 #include "glad/glad.h"
 
-constexpr glm::vec3 chunkSize = {16, 16, 5};
+constexpr glm::vec3 chunkSize = {16, 16, 256};
 constexpr glm::vec3 extentsMin = { -0.5f, -0.5f, -0.5f };
 constexpr glm::vec3 extentsMax = extentsMin + chunkSize;
 
