@@ -363,8 +363,9 @@ bool Chunk::isFaceVisible(glm::vec3& pos, BlockFace face)
 		glm::vec2 chunkIndex = glm::floor(queryPos / chunkSize);
 		Chunk* queryChunk = ChunkManager::getInstance()->getChunkAtIndex(chunkIndex);
 
-		if (!queryChunk) {
+		if (!queryChunk || queryPos.z < 0 || queryPos.z >= chunkSize.z) {
 			return true; // default to true if no chunk exists at queryPos
+						 // or we are querying outside the valid height range
 		}
 		else {
 			return (WorldGenerator::getBlockTypeAtPos(queryPos) == AIR);
