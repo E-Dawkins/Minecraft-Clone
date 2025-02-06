@@ -10,6 +10,8 @@
 #include "Chunk.h"
 #include "AssetManager.h"
 #include "Camera.h"
+#include "ChunkManager.h"
+#include "DebugClock.h"
 
 const int WINDOW_WIDTH = 1280, WINDOW_HEIGHT = 960;
 Camera cam = Camera({ 0, 0, 20 }, { 1, 1, 0 });
@@ -111,13 +113,12 @@ int main(void)
 
     setRenderingMode(0); // set to default rendering mode
 
-    const int countX = 5, countY = 5;
-    Chunk* chunks[countX][countY] = {};
-    for (int x = 0; x < countX; x++) {
-        for (int y = 0; y < countY; y++) {
-            chunks[x][y] = new Chunk({ x, y });
-        }
-    }
+    DebugClock::recordTime("Chunk gen start");
+
+    ChunkManager::getInstance()->initChunks(3);
+
+    DebugClock::recordTime("Chunk gen end");
+    DebugClock::printTimePoints();
 
     AssetManager::loadTexture("./assets/texture-atlas.png");
 
@@ -145,11 +146,7 @@ int main(void)
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        for (int x = 0; x < countX; x++) {
-            for (int y = 0; y < countY; y++) {
-                chunks[x][y]->render();
-            }
-        }
+        ChunkManager::getInstance()->renderChunks();
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
@@ -169,11 +166,7 @@ int main(void)
         }
     }
 
-    for (int x = 0; x < countX; x++) {
-        for (int y = 0; y < countY; y++) {
-            delete chunks[x][y];
-        }
-    }
+    delete ChunkManager::getInstance();
 
     glDeleteProgram(shaderProgram);
     glDeleteShader(fragmentShader);

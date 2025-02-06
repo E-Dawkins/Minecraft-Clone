@@ -3,15 +3,12 @@
 #include "AssetManager.h"
 #include <list>
 #include "WorldGenerator.h"
+#include "ChunkManager.h"
+#include "DebugClock.h"
 
 Chunk::Chunk(glm::vec2 _chunkIndex)
 {
 	startPos = glm::vec3(_chunkIndex, 0) * chunkSize;
-
-	generateChunk();
-	generateFaces();
-	optimizeFaces();
-	initShaderVars();
 }
 
 Chunk::~Chunk()
@@ -20,6 +17,19 @@ Chunk::~Chunk()
 	glDeleteBuffers(1, &vbo);
 
 	glDeleteVertexArrays(1, &vao);
+}
+
+void Chunk::init()
+{
+	DebugClock::recordTime("Start gen chunk");
+	generateChunk();
+	DebugClock::recordTime("Start gen faces");
+	generateFaces();
+	DebugClock::recordTime("Start optimize faces");
+	optimizeFaces();
+	DebugClock::recordTime("Start init shader vars");
+	initShaderVars();
+	DebugClock::recordTime("Finish gen chunk");
 }
 
 void Chunk::render()
@@ -350,7 +360,15 @@ bool Chunk::isFaceVisible(glm::vec3& pos, BlockFace face)
 	glm::vec3 queryPos = pos + offset;
 
 	if (!isPosInChunk(queryPos)) {
-		return true; // default to true if querying outside chunk extents
+		glm::vec2 chunkIndex = glm::floor(queryPos / chunkSize);
+		Chunk* queryChunk = ChunkManager::getInstance()->getChunkAtIndex(chunkIndex);
+
+		if (!queryChunk) {
+			return true; // default to true if no chunk exists at queryPos
+		}
+		else {
+			return (WorldGenerator::getBlockTypeAtPos(queryPos) == AIR);
+		}
 	}
 
 	// wrap queryPos before indexing into blocks array

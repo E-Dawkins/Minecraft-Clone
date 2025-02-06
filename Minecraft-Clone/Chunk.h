@@ -22,6 +22,7 @@ public:
     Chunk(glm::vec2 _chunkIndex);
     ~Chunk();
 
+    void init();
     void render();
 
     // @returns Whether a position is within the chunk boundaries. [startPos -> startPos + chunkSize)
