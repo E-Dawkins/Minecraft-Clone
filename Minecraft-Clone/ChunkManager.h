@@ -25,6 +25,10 @@ public:
 
 	size_t chunkCount();
 	Chunk* getChunkAtIndex(glm::vec2& index);
+	const std::pair<glm::vec2, Chunk*>& at(size_t index) const;
+
+	void removeChunk(glm::vec2& chunkIndex);
+	void addChunk(glm::vec2& chunkIndex);
 
 private:
 	static ChunkManager* instance;

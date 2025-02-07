@@ -31,6 +31,15 @@ public:
     // @returns Whether a position is within the chunk size. [0 -> chunkSize)
     bool isPosInChunkSize(glm::vec3 pos);
 
+    // @returns The chunk index that contains the position
+    static glm::vec2 posToChunkIndex(const glm::vec3& pos) {
+        return glm::floor(pos / chunkSize);
+    }
+
+    const glm::vec2 getChunkIndex() const {
+        return chunkIndex;
+    }
+
 private:
     void generateChunk();
     void generateFaces();
@@ -44,6 +53,7 @@ private:
 
 private:
     glm::vec3 startPos = { 0, 0, 0 };
+    glm::vec2 chunkIndex = { 0, 0 };
 
     GLuint vao, vbo, ebo;
     std::vector<FaceData> faceData = {};

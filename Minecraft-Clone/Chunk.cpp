@@ -9,6 +9,9 @@
 Chunk::Chunk(glm::vec2 _chunkIndex)
 {
 	startPos = glm::vec3(_chunkIndex, 0) * chunkSize;
+	chunkIndex = _chunkIndex;
+
+	generateChunk();
 }
 
 Chunk::~Chunk()
@@ -21,8 +24,6 @@ Chunk::~Chunk()
 
 void Chunk::init()
 {
-	DebugClock::recordTime("Start gen chunk");
-	generateChunk();
 	DebugClock::recordTime("Start gen faces");
 	generateFaces();
 	DebugClock::recordTime("Start optimize faces");
@@ -360,7 +361,7 @@ bool Chunk::isFaceVisible(glm::vec3& pos, BlockFace face)
 	glm::vec3 queryPos = pos + offset;
 
 	if (!isPosInChunk(queryPos)) {
-		glm::vec2 chunkIndex = glm::floor(queryPos / chunkSize);
+		glm::vec2 chunkIndex = posToChunkIndex(queryPos);
 		Chunk* queryChunk = ChunkManager::getInstance()->getChunkAtIndex(chunkIndex);
 
 		if (!queryChunk || queryPos.z < 0 || queryPos.z >= chunkSize.z) {

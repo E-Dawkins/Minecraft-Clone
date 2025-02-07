@@ -14,9 +14,11 @@
 #include "DebugClock.h"
 
 const int WINDOW_WIDTH = 1280, WINDOW_HEIGHT = 960;
-Camera cam = Camera({ 0, 0, 20 }, { 1, 1, 0 });
+Camera cam = Camera({ chunkSize.x / 2, chunkSize.y / 2, 20 }, { 1, 1, 0 });
+glm::vec2 camChunkIndex = Chunk::posToChunkIndex(cam.getPosition());
 GLuint renderingMode = 0;
 GLuint numRenderingModes = 2; // normal, wire-frame
+GLuint renderDistance = 2;
 
 void processInput(GLFWwindow* window);
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height);
@@ -24,6 +26,7 @@ void cursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 std::string loadShader(std::string path);
 void setRenderingMode(GLuint newMode);
+void reloadChunks();
 
 int main(void)
 {
@@ -113,9 +116,10 @@ int main(void)
 
     setRenderingMode(0); // set to default rendering mode
 
+    DebugClock::setEnabled(false);
     DebugClock::recordTime("Chunk gen start");
 
-    ChunkManager::getInstance()->initChunks(3);
+    ChunkManager::getInstance()->initChunks(renderDistance);
 
     DebugClock::recordTime("Chunk gen end");
     DebugClock::printTimePoints();
@@ -140,6 +144,8 @@ int main(void)
         processInput(window);
         if (cam.update(deltaSeconds)) {
             glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(cam.getView()));
+
+            reloadChunks();
         }
 
         /* Render here */
@@ -260,4 +266,41 @@ void setRenderingMode(GLuint newMode) {
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         } break;
     }
+}
+
+void reloadChunks() {
+    // check if camera has moved across chunk boundaries
+    glm::vec2 chunkIndex = Chunk::posToChunkIndex(cam.getPosition());
+    if (chunkIndex == camChunkIndex) {
+        return;
+    }
+
+    glm::vec2 prevChunkIndex = camChunkIndex;
+    camChunkIndex = chunkIndex;
+
+    // any chunk outside render distance should:
+    // -> be cleared of data (faces, blocks, etc.)
+    // -> re-loaded at new position
+    std::vector<glm::vec2> newIndexes = {};
+
+    ChunkManager* chunkManager = ChunkManager::getInstance();
+    for (int i = chunkManager->chunkCount() - 1; i >= 0; i--) {
+        auto& pair = chunkManager->at(i);
+
+        if (pair.second != nullptr) {
+            glm::vec2 curChunkIndex = pair.second->getChunkIndex();
+            float dist = glm::distance(camChunkIndex, curChunkIndex);
+
+            if (dist > renderDistance) {
+                chunkManager->removeChunk(curChunkIndex);
+                newIndexes.emplace_back(camChunkIndex - (curChunkIndex - prevChunkIndex));
+            }
+        }
+    }
+
+    for (glm::vec2& index : newIndexes) {
+        chunkManager->addChunk(index);
+    }
+
+    newIndexes.clear();
 }
