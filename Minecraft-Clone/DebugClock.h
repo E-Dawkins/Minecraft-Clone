@@ -9,11 +9,21 @@ private:
 #define t_now std::chrono::high_resolution_clock::now()
 
 public:
+	static void setEnabled(bool isEnabled) {
+		enabled = isEnabled;
+	}
+
 	static void recordTime(const char* label) {
-		time_points.emplace_back(std::make_pair(label, t_now));
+		if (enabled) {
+			time_points.emplace_back(std::make_pair(label, t_now));
+		}
 	}
 
 	static void printTimePoints() {
+		if (!enabled) {
+			return;
+		}
+
 		if (time_points.empty()) {
 			std::cout << "<=== Debug Clock Empty! ===>" << std::endl;
 			return;
@@ -34,4 +44,5 @@ public:
 
 private:
 	static std::vector<std::pair<const char*, t_point>> time_points;
+	static bool enabled;
 };
