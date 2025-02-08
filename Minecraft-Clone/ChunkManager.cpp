@@ -41,7 +41,7 @@ Chunk* ChunkManager::getChunkAtIndex(glm::vec2& index) {
 	return nullptr;
 }
 
-const std::pair<glm::vec2, Chunk*>& ChunkManager::at(size_t index) const {
+const std::pair<const glm::vec2, Chunk*>& ChunkManager::at(size_t index) const {
 	auto itr = worldChunks.begin();
 	std::advance(itr, index);
 	return *itr;

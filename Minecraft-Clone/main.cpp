@@ -281,7 +281,7 @@ void reloadChunks() {
     std::vector<glm::vec2> newIndexes = {};
 
     ChunkManager* chunkManager = ChunkManager::getInstance();
-    for (int i = chunkManager->chunkCount() - 1; i >= 0; i--) {
+    for (int i = (int)chunkManager->chunkCount() - 1; i >= 0; i--) {
         auto& pair = chunkManager->at(i);
 
         if (pair.second != nullptr) {

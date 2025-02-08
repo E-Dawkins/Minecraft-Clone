@@ -6,7 +6,8 @@
 #include "ChunkManager.h"
 #include "DebugClock.h"
 
-Chunk::Chunk(glm::vec2 _chunkIndex)
+Chunk::Chunk(glm::vec2 _chunkIndex) :
+	blocks((size_t)chunkSize.x, std::vector<std::vector<Block>>((size_t)chunkSize.y, std::vector<Block>((size_t)chunkSize.z)))
 {
 	startPos = glm::vec3(_chunkIndex, 0) * chunkSize;
 	chunkIndex = _chunkIndex;
@@ -21,7 +22,13 @@ Chunk::~Chunk()
 
 	glDeleteVertexArrays(1, &vao);
 
+	glDeleteBuffers(1, &faceDataBuffer);
+
 	faceData.clear();
+	faceData.shrink_to_fit();
+
+	blocks.clear();
+	blocks.shrink_to_fit();
 }
 
 void Chunk::init()
@@ -111,10 +118,11 @@ void Chunk::optimizeFaces()
 	// returns if a face is valid to be added to an optimized one
 	// i.e. within chunk bounds and hasn't already been optimized
 	auto isValidFace = [&](glm::vec3 queryPos, BlockType refType, int refId) {
-		Block& queryBlock = blocks[(int)queryPos.x][(int)queryPos.y][(int)queryPos.z];
 		if (!isPosInChunkSize(queryPos)) {
 			return false;
 		}
+
+		Block& queryBlock = blocks[(int)queryPos.x][(int)queryPos.y][(int)queryPos.z];
 
 		bool sameType = queryBlock.type == refType;
 		bool faceVisible = queryBlock.visibleFaces[refId];
@@ -267,13 +275,11 @@ void Chunk::initShaderVars()
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, vertexSize, (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
 	
-	GLuint faceDataBuffer;
 	glGenBuffers(1, &faceDataBuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, faceDataBuffer);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(FaceData) * faceData.size(), faceData.data(), GL_STATIC_DRAW);
 
 	// Offset (per-instance data)
-	glBindBuffer(GL_ARRAY_BUFFER, faceDataBuffer);
 	glEnableVertexAttribArray(2);
 	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(FaceData), (void*)0);
 	glVertexAttribDivisor(2, 1); // one offset per-face
@@ -296,65 +302,23 @@ void Chunk::initShaderVars()
 
 void Chunk::insertFaceData(Block& b)
 {
-	// front face
-	b.visibleFaces[FRONT] = isFaceVisible(b.position, FRONT);
-	if (b.visibleFaces[FRONT]) {
-		faceData.push_back({
-			b.position + faceNormals[FRONT] * 0.5f,
-			FRONT,
-			b.getTextureCoords(FRONT, 0)
-		});
-	}
+	auto insertData = [&](BlockFace id) {
+		b.visibleFaces[id] = isFaceVisible(b.position, id);
+		if (b.visibleFaces[id]) {
+			faceData.push_back({
+				b.position + faceNormals[id] * 0.5f,
+				id,
+				b.getTextureCoords(id, 0)
+			});
+		}
+	};
 
-	// back face
-	b.visibleFaces[BACK] = isFaceVisible(b.position, BACK);
-	if (b.visibleFaces[BACK]) {
-		faceData.push_back({
-			b.position + faceNormals[BACK] * 0.5f,
-			BACK,
-			b.getTextureCoords(BACK, 0)
-		});
-	}
-
-	// left face
-	b.visibleFaces[LEFT] = isFaceVisible(b.position, LEFT);
-	if (b.visibleFaces[LEFT]) {
-		faceData.push_back({
-			b.position + faceNormals[LEFT] * 0.5f,
-			LEFT,
-			b.getTextureCoords(LEFT, 0)
-		});
-	}
-
-	// right face
-	b.visibleFaces[RIGHT] = isFaceVisible(b.position, RIGHT);
-	if (b.visibleFaces[RIGHT]) {
-		faceData.push_back({
-			b.position + faceNormals[RIGHT] * 0.5f,
-			RIGHT,
-			b.getTextureCoords(RIGHT, 0)
-		});
-	}
-
-	// top face
-	b.visibleFaces[TOP] = isFaceVisible(b.position, TOP);
-	if (b.visibleFaces[TOP]) {
-		faceData.push_back({
-			b.position + faceNormals[TOP] * 0.5f,
-			TOP,
-			b.getTextureCoords(TOP, 0)
-		});
-	}
-
-	// bottom face
-	b.visibleFaces[BOTTOM] = isFaceVisible(b.position, BOTTOM);
-	if (b.visibleFaces[BOTTOM]) {
-		faceData.push_back({
-			b.position + faceNormals[BOTTOM] * 0.5f,
-			BOTTOM,
-			b.getTextureCoords(BOTTOM, 0)
-		});
-	}
+	insertData(FRONT);
+	insertData(BACK);
+	insertData(LEFT);
+	insertData(RIGHT);
+	insertData(TOP);
+	insertData(BOTTOM);
 }
 
 bool Chunk::isFaceVisible(glm::vec3& pos, BlockFace face)

@@ -56,7 +56,8 @@ private:
     glm::vec2 chunkIndex = { 0, 0 };
 
     GLuint vao, vbo, ebo;
+    GLuint faceDataBuffer;
     std::vector<FaceData> faceData = {};
-    Block blocks[(GLuint)chunkSize.x][(GLuint)chunkSize.y][(GLuint)chunkSize.z] = {};
+    std::vector<std::vector<std::vector<Block>>> blocks;
 };
 
