@@ -275,9 +275,6 @@ void reloadChunks() {
         return;
     }
 
-    glm::vec2 prevChunkIndex = camChunkIndex;
-    camChunkIndex = chunkIndex;
-
     // any chunk outside render distance should:
     // -> be cleared of data (faces, blocks, etc.)
     // -> re-loaded at new position
@@ -289,11 +286,11 @@ void reloadChunks() {
 
         if (pair.second != nullptr) {
             glm::vec2 curChunkIndex = pair.second->getChunkIndex();
-            float dist = glm::distance(camChunkIndex, curChunkIndex);
+            float dist = glm::distance(chunkIndex, curChunkIndex);
 
             if (dist > renderDistance) {
                 chunkManager->removeChunk(curChunkIndex);
-                newIndexes.emplace_back(camChunkIndex - (curChunkIndex - prevChunkIndex));
+                newIndexes.emplace_back(chunkIndex - (curChunkIndex - camChunkIndex));
             }
         }
     }
@@ -303,4 +300,6 @@ void reloadChunks() {
     }
 
     newIndexes.clear();
+
+    camChunkIndex = chunkIndex;
 }

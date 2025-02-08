@@ -48,6 +48,7 @@ const std::pair<glm::vec2, Chunk*>& ChunkManager::at(size_t index) const {
 }
 
 void ChunkManager::removeChunk(glm::vec2& chunkIndex) {
+	delete worldChunks[chunkIndex];
 	worldChunks.erase(chunkIndex);
 }
 

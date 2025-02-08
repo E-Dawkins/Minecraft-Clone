@@ -20,6 +20,8 @@ Chunk::~Chunk()
 	glDeleteBuffers(1, &vbo);
 
 	glDeleteVertexArrays(1, &vao);
+
+	faceData.clear();
 }
 
 void Chunk::init()
