@@ -14,7 +14,7 @@
 #include "DebugClock.h"
 
 const int WINDOW_WIDTH = 1280, WINDOW_HEIGHT = 960;
-Camera cam = Camera({ chunkSize.x / 2, chunkSize.y / 2, 20 }, { 1, 1, 0 });
+Camera cam = Camera({ chunkSize.x / 2, chunkSize.y / 2, 12 }, { 1, 1, 0 });
 glm::vec2 camChunkIndex = Chunk::posToChunkIndex(cam.getPosition());
 GLuint renderingMode = 0;
 GLuint numRenderingModes = 2; // normal, wire-frame
@@ -287,8 +287,9 @@ void reloadChunks() {
         if (pair.second != nullptr) {
             glm::vec2 curChunkIndex = pair.second->getChunkIndex();
             float dist = glm::distance(chunkIndex, curChunkIndex);
+            float loadDist = std::sqrtf(2.f * renderDistance * renderDistance);
 
-            if (dist > renderDistance) {
+            if (dist > loadDist) {
                 chunkManager->removeChunk(curChunkIndex);
                 newIndexes.emplace_back(chunkIndex - (curChunkIndex - camChunkIndex));
             }

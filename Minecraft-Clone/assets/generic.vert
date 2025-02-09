@@ -9,6 +9,7 @@ layout (location = 5) in vec3 faceSize;
 
 out vec2 Texcoord;
 out vec2 TexcoordStart;
+out float DistanceFromCamera;
 
 uniform mat4 view;
 uniform mat4 proj;
@@ -48,5 +49,8 @@ void main() {
    TexcoordStart = texcoordStart;
 
    vec3 offsetPos = (getRotatedPos() * faceSize) + offset;
-   gl_Position = proj * view * vec4(offsetPos, 1.0);
+   vec4 viewPos = view * vec4(offsetPos, 1.0);
+   gl_Position = proj * viewPos;
+
+   DistanceFromCamera = length(viewPos.xyz);
 }

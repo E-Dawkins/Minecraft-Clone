@@ -5,17 +5,11 @@
 ChunkManager* ChunkManager::instance = nullptr;
 
 void ChunkManager::initChunks(uint8_t renderDistance) {
-	int yCount = 0, yOffset = 1;
 	for (int x = -renderDistance; x <= renderDistance; x++) {
-		for (int y = -yCount; y <= yCount; y++) {
+		for (int y = -renderDistance; y <= renderDistance; y++) {
 			glm::vec2 chunkIndex = { x, y };
 			worldChunks[chunkIndex] = new Chunk(chunkIndex);
 		}
-
-		if (x == 0)
-			yOffset = -1;
-
-		yCount += yOffset;
 	}
 
 	for (auto& c : worldChunks) {
