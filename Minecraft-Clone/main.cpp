@@ -1,5 +1,15 @@
+// Include imgui first...
+#include <imgui/imgui.h>
+#include <imgui/imgui_impl_glfw.h>
+#include <imgui/imgui_impl_opengl3.h>
+
+// ...then glad
 #include <glad/glad.h>
+
+// ...then GLFW
 #include <GLFW/glfw3.h>
+
+// ...and everything else that we need
 #include <iostream>
 #include <glm/mat4x4.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -131,6 +141,17 @@ int main(void)
 
     auto t_previous = std::chrono::high_resolution_clock::now();
 
+    // Check ImGui version and initialise ImGui specific variables
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); /*(void)io;*/
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 330");
+
+    float minFPS = FLT_MAX;
+    float maxFPS = FLT_MIN;
+
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
@@ -152,7 +173,28 @@ int main(void)
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        // Tell ImGui we are working with a new frame
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
         ChunkManager::getInstance()->renderChunks();
+
+        float currentFPS = io.Framerate;
+        if (currentFPS < minFPS) minFPS = currentFPS;
+        if (currentFPS > maxFPS) maxFPS = currentFPS;
+
+        // Setup ImGui window/s here
+        ImGui::SetNextWindowSize(ImVec2(0, 0)); // set next window to auto-fit its' content
+        ImGui::Begin("FPS Counter");
+        ImGui::Text("Target: %.1f", (float)targetFPS);
+        ImGui::Text("Current: %.1f", currentFPS);
+        ImGui::Text("Range: %.1f-%.1f", minFPS, maxFPS);
+        ImGui::End();
+
+        // Draw ImGui window/s here
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
@@ -171,6 +213,10 @@ int main(void)
             t_frameTime = t_frameEnd - t_frameStart;
         }
     }
+
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 
     delete ChunkManager::getInstance();
 
