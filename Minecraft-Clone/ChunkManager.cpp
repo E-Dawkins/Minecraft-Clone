@@ -27,6 +27,14 @@ size_t ChunkManager::chunkCount() {
 	return worldChunks.size();
 }
 
+const size_t ChunkManager::getFaceCount() const {
+	size_t count = 0;
+	for (auto& c : worldChunks) {
+		count += c.second->getFaceCount();
+	}
+	return count;
+}
+
 Chunk* ChunkManager::getChunkAtIndex(glm::vec2& index) {
 	if (worldChunks.find(index) != worldChunks.end()) {
 		return worldChunks[index];

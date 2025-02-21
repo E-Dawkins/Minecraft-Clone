@@ -40,6 +40,10 @@ public:
         return chunkIndex;
     }
 
+    const size_t getFaceCount() const {
+        return faceData.size();
+    }
+
 private:
     void generateChunk();
     void generateFaces();

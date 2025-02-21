@@ -28,7 +28,7 @@ Camera cam = Camera({ chunkSize.x / 2, chunkSize.y / 2, 12 }, { 1, 1, 0 });
 glm::vec2 camChunkIndex = Chunk::posToChunkIndex(cam.getPosition());
 GLuint renderingMode = 0;
 GLuint numRenderingModes = 2; // normal, wire-frame
-GLuint renderDistance = 2;
+GLuint renderDistance = 0;
 
 void processInput(GLFWwindow* window);
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height);
@@ -53,7 +53,7 @@ int main(void)
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     /* Create a windowed mode window and its OpenGL context */
-    window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Hello World", NULL, NULL);
+    window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Minecraft Clone", NULL, NULL);
     if (!window)
     {
         std::cout << "Failed to create window!" << std::endl;
@@ -126,7 +126,7 @@ int main(void)
 
     setRenderingMode(0); // set to default rendering mode
 
-    DebugClock::setEnabled(false);
+    DebugClock::setEnabled(true);
     DebugClock::recordTime("Chunk gen start");
 
     ChunkManager::getInstance()->initChunks(renderDistance);
@@ -136,7 +136,7 @@ int main(void)
 
     AssetManager::loadTexture("./assets/texture-atlas.png");
 
-    const int targetFPS = 60;
+    const int targetFPS = INT_MAX;
     const double frameDuration = 1.0 / targetFPS;
 
     auto t_previous = std::chrono::high_resolution_clock::now();
@@ -184,12 +184,22 @@ int main(void)
         if (currentFPS < minFPS) minFPS = currentFPS;
         if (currentFPS > maxFPS) maxFPS = currentFPS;
 
+        size_t faceCount = ChunkManager::getInstance()->getFaceCount();
+
         // Setup ImGui window/s here
         ImGui::SetNextWindowSize(ImVec2(0, 0)); // set next window to auto-fit its' content
+        ImGui::SetNextWindowPos(ImVec2(50, 50));
         ImGui::Begin("FPS Counter");
         ImGui::Text("Target: %.1f", (float)targetFPS);
         ImGui::Text("Current: %.1f", currentFPS);
         ImGui::Text("Range: %.1f-%.1f", minFPS, maxFPS);
+        ImGui::End();
+
+        ImGui::SetNextWindowSize(ImVec2(0, 0)); // set next window to auto-fit its' content
+        ImGui::SetNextWindowPos(ImVec2(50, 150));
+        ImGui::Begin("Graphic Info.");
+        ImGui::Text("Faces: %i", faceCount);
+        ImGui::Text("Face Data: %.2f kb", (sizeof(FaceData) * faceCount) / 1'024.f);
         ImGui::End();
 
         // Draw ImGui window/s here
