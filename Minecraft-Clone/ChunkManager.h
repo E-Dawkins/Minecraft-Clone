@@ -1,6 +1,9 @@
 #pragma once
 #include <map>
 #include <glm/vec2.hpp>
+#include <thread>
+#include <mutex>
+#include <queue>
 
 class Chunk;
 
@@ -20,6 +23,8 @@ public:
 		return instance;
 	}
 
+	~ChunkManager();
+
 	void initChunks(uint8_t renderDistance);
 	void renderChunks();
 
@@ -31,8 +36,19 @@ public:
 	void removeChunk(glm::vec2& chunkIndex);
 	void addChunk(glm::vec2& chunkIndex);
 
+	void checkForLoadedChunks();
+
+private:
+	void loadingThreadFunc();
+
 private:
 	static ChunkManager* instance;
 	
 	std::map<glm::vec2, Chunk*, Vec2Comparator> worldChunks = {};
+
+	std::thread loadingThread;
+	bool shouldLoadChunks = true;
+	std::queue<glm::vec2> indexToLoad = {};
+	std::queue<Chunk*> loadedChunks = {};
+	std::mutex chunkMutex;
 };

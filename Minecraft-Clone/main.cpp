@@ -28,7 +28,7 @@ Camera cam = Camera({ chunkSize.x / 2, chunkSize.y / 2, 12 }, { 1, 1, 0 });
 glm::vec2 camChunkIndex = Chunk::posToChunkIndex(cam.getPosition());
 GLuint renderingMode = 0;
 GLuint numRenderingModes = 2; // normal, wire-frame
-GLuint renderDistance = 0;
+GLuint renderDistance = 2;
 
 void processInput(GLFWwindow* window);
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height);
@@ -126,7 +126,7 @@ int main(void)
 
     setRenderingMode(0); // set to default rendering mode
 
-    DebugClock::setEnabled(true);
+    DebugClock::setEnabled(false);
     DebugClock::recordTime("Chunk gen start");
 
     ChunkManager::getInstance()->initChunks(renderDistance);
@@ -136,7 +136,7 @@ int main(void)
 
     AssetManager::loadTexture("./assets/texture-atlas.png");
 
-    const int targetFPS = INT_MAX;
+    const int targetFPS = 60;
     const double frameDuration = 1.0 / targetFPS;
 
     auto t_previous = std::chrono::high_resolution_clock::now();
@@ -168,6 +168,8 @@ int main(void)
 
             reloadChunks();
         }
+
+        ChunkManager::getInstance()->checkForLoadedChunks();
 
         /* Render here */
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -342,10 +344,10 @@ void reloadChunks() {
 
         if (pair.second != nullptr) {
             glm::vec2 curChunkIndex = pair.second->getChunkIndex();
-            float dist = glm::distance(chunkIndex, curChunkIndex);
-            float loadDist = std::sqrtf(2.f * renderDistance * renderDistance);
+            float distX = glm::distance(chunkIndex.x, curChunkIndex.x);
+            float distY = glm::distance(chunkIndex.y, curChunkIndex.y);
 
-            if (dist > loadDist) {
+            if (distX > renderDistance || distY > renderDistance) {
                 chunkManager->removeChunk(curChunkIndex);
                 newIndexes.emplace_back(chunkIndex - (curChunkIndex - camChunkIndex));
             }
