@@ -121,6 +121,9 @@ int main(void)
     GLint projLoc = glGetUniformLocation(shaderProgram, "proj");
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
 
+    GLint renderDistLoc = glGetUniformLocation(shaderProgram, "renderDist");
+    glUniform1ui(renderDistLoc, renderDistance);
+
     glEnable(GL_DEPTH_TEST);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
