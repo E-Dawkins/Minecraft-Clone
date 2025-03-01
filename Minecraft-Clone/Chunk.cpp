@@ -327,8 +327,8 @@ bool Chunk::isFaceVisible(glm::vec3& pos, BlockFace face)
 	glm::vec3 queryPos = pos + offset;
 
 	if (!isPosInChunk(queryPos)) {
-		glm::vec2 chunkIndex = posToChunkIndex(queryPos);
-		Chunk* queryChunk = ChunkManager::getInstance()->getChunkAtIndex(chunkIndex);
+		glm::vec2 index = posToChunkIndex(queryPos);
+		Chunk* queryChunk = ChunkManager::getInstance()->getChunkAtIndex(index);
 
 		if (!queryChunk || queryPos.z < 0 || queryPos.z >= chunkSize.z) {
 			return true; // default to true if no chunk exists at queryPos

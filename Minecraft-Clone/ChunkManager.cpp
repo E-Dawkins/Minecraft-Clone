@@ -1,6 +1,5 @@
 #include "ChunkManager.h"
 #include "Chunk.h"
-#include <ranges>
 
 ChunkManager* ChunkManager::instance = nullptr;
 

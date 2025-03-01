@@ -129,7 +129,7 @@ int main(void)
     DebugClock::setEnabled(true);
     DebugClock::recordTime("Chunk gen start");
 
-    ChunkManager::getInstance()->initChunks(renderDistance);
+    ChunkManager::getInstance()->initChunks((uint8_t)renderDistance);
 
     DebugClock::recordTime("Chunk gen end");
     DebugClock::printTimePoints();
@@ -270,6 +270,7 @@ void processInput(GLFWwindow* window) {
     }
 }
 
+#pragma warning(suppress: 4100)
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height) {
     // tell OpenGL that the new rendering area is at position (0, 0) and extents (width, height)
     glViewport(0, 0, width, height);
@@ -288,6 +289,7 @@ void cursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
     glfwSetCursorPos(window, halfWidth, halfHeight);
 }
 
+#pragma warning(suppress: 4100)
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
     cam.moveSpeed = std::max(cam.moveSpeed + (float)yoffset, 1.0f);
 }
