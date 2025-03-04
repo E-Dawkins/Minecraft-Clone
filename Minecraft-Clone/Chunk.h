@@ -5,15 +5,37 @@
 #include "Block.h"
 #include "glad/glad.h"
 
-constexpr glm::vec3 chunkSize = {16, 16, 256};
+constexpr glm::vec3 chunkSize = {16, 16, 128};
 constexpr glm::vec3 extentsMin = { -0.5f, -0.5f, -0.5f };
 constexpr glm::vec3 extentsMax = extentsMin + chunkSize;
 
 struct FaceData {
-    glm::vec3 offset;
-    BlockFace id;
-    glm::vec2 texcoordStart;
-    glm::vec3 size = glm::vec3(1);
+    // position     x: 4 bits   y: 4 bits   z: 8 bits
+    // direction     : 3 bits
+    // block id      : 4 bits
+    // TOTAL         : 23 bits
+    
+    uint16_t position = 0;
+    uint8_t direction_id = 0;
+
+    void setPosition(const glm::ivec3& p) {
+        // p => xxxx yyyy zzzz zzzz
+        position = ((p.x & 15) << 4 | (p.y & 15)) << 8 | (p.z & 255);
+    }
+
+    void setDirection(const BlockFace d) {
+        // d => 0ddd ----
+        direction_id = ((d & 7) << 4) | (direction_id & 15);
+    }
+
+    void setBlockId(const uint16_t b) {
+        // b => ---- bbbb
+        direction_id = (direction_id & 240) | (b & 15);
+    }
+
+    const BlockType getBlockId() const {
+        return (BlockType)(direction_id & 15);
+    }
 };
 
 class Chunk
@@ -47,7 +69,6 @@ public:
 private:
     void generateChunk();
     void generateFaces();
-    void optimizeFaces();
     void initShaderVars();
 
     void insertFaceData(Block& b);

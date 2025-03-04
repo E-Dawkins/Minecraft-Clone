@@ -22,3 +22,11 @@ constexpr glm::vec2 blockTextureOffsets[TYPE_COUNT][6] = {
 	{BLOCK_OFFSET(3, 0), BLOCK_OFFSET(3, 0), BLOCK_OFFSET(3, 0), BLOCK_OFFSET(3, 0), BLOCK_OFFSET(3, 0), BLOCK_OFFSET(3, 0) }, // STONE
 	{BLOCK_OFFSET(4, 0), BLOCK_OFFSET(4, 0), BLOCK_OFFSET(4, 0), BLOCK_OFFSET(4, 0), BLOCK_OFFSET(4, 0), BLOCK_OFFSET(4, 0) }, // COBBLESTONE
 };
+
+constexpr uint8_t blockTextureIds[TYPE_COUNT][6] = {
+	//	FRONT BACK LEFT RIGHT TOP BOTTOM
+	{ 0, 0, 0, 0, 0, 0 }, // DIRT
+	{ 2, 2, 2, 2, 1, 0 }, // GRASS
+	{ 3, 3, 3, 3, 3, 3 }, // STONE
+	{ 4, 4, 4, 4, 4, 4 }, // COBBLESTONE
+};
