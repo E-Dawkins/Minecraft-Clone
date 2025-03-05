@@ -172,8 +172,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AssetManager.h" />
-    <ClInclude Include="Block.h" />
-    <ClInclude Include="BlockTypes.h" />
+    <ClInclude Include="BlockAttribs.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Chunk.h" />
     <ClInclude Include="ChunkManager.h" />

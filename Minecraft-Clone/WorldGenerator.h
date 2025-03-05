@@ -1,5 +1,5 @@
 #pragma once
-#include "BlockTypes.h"
+#include "BlockAttribs.h"
 #include <glad/glad.h>
 
 class WorldGenerator

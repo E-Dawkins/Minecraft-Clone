@@ -7,7 +7,7 @@
 #include "DebugClock.h"
 
 Chunk::Chunk(glm::vec2 _chunkIndex) :
-	blocks((size_t)chunkSize.x, std::vector<std::vector<Block>>((size_t)chunkSize.y, std::vector<Block>((size_t)chunkSize.z)))
+	blocks((size_t)chunkSize.x, std::vector<std::vector<BlockType>>((size_t)chunkSize.y, std::vector<BlockType>((size_t)chunkSize.z, BlockType::AIR)))
 {
 	startPos = glm::vec3(_chunkIndex, 0) * chunkSize;
 	chunkIndex = _chunkIndex;
@@ -66,10 +66,7 @@ void Chunk::generateChunk()
 			for (GLuint z = 0; z < chunkSize.z; z++) {
 				glm::vec3 position = startPos + glm::vec3(x, y, z);
 
-				blocks[x][y][z] = {
-					position,
-					WorldGenerator::getBlockTypeAtPos(position)
-				};
+				blocks[x][y][z] = WorldGenerator::getBlockTypeAtPos(position);
 			}
 		}
 	}
@@ -80,12 +77,12 @@ void Chunk::generateFaces()
 	for (GLuint x = 0; x < chunkSize.x; x++) {
 		for (GLuint y = 0; y < chunkSize.y; y++) {
 			for (GLuint z = 0; z < chunkSize.z; z++) {
-				Block& b = blocks[x][y][z];
-				if (b.type == AIR) {
+				if (blocks[x][y][z] == AIR) {
 					continue;
 				}
 
-				insertFaceData(b);
+				glm::vec3 position = {x, y, z};
+				insertFaceData(position);
 			}
 		}
 	}
@@ -143,14 +140,14 @@ void Chunk::initShaderVars()
 	glVertexAttribDivisor(3, 1);
 }
 
-void Chunk::insertFaceData(Block& b)
+void Chunk::insertFaceData(glm::vec3& blockIndex)
 {
 	auto insertData = [&](BlockFace faceDirection) {
-		b.visibleFaces[faceDirection] = isFaceVisible(b.position, faceDirection);
-		if (b.visibleFaces[faceDirection]) {
+		if (isFaceVisible(blockIndex, faceDirection)) {
 			FaceData f;
-			f.setPosition(b.position);
-			f.setBlockId(blockTextureIds[b.type][faceDirection]);
+			f.setPosition(blockIndex);
+			BlockType type = blocks[(int)blockIndex.x][(int)blockIndex.y][(int)blockIndex.z];
+			f.setBlockId(blockTextureIds[type][faceDirection]);
 			f.setDirection(faceDirection);
 
 			faceData.emplace_back(f);
@@ -170,43 +167,26 @@ bool Chunk::isFaceVisible(glm::vec3& pos, BlockFace face)
 	glm::vec3 offset = faceNormals[face];
 	glm::vec3 queryPos = pos + offset;
 
-	if (!isPosInChunk(queryPos)) {
+	bool withinMin = glm::all(glm::greaterThanEqual(queryPos, glm::vec3(0)));
+	bool withinMax = glm::all(glm::lessThan(queryPos, chunkSize));
+	if (!withinMin || !withinMax) {
 		glm::vec2 index = posToChunkIndex(queryPos);
 		Chunk* queryChunk = ChunkManager::getInstance()->getChunkAtIndex(index);
 
-		if (!queryChunk || queryPos.z < 0 || queryPos.z >= chunkSize.z) {
+		if (!queryChunk) {
 			return true; // default to true if no chunk exists at queryPos
-						 // or we are querying outside the valid height range
 		}
 		else {
-			return (WorldGenerator::getBlockTypeAtPos(queryPos) == AIR);
+			glm::vec3 globalQueryPos = queryPos + startPos;
+			return (WorldGenerator::getBlockTypeAtPos(globalQueryPos) == AIR);
 		}
 	}
 
 	// wrap queryPos before indexing into blocks array
 	queryPos = glm::mod(queryPos, chunkSize);
-	if (blocks[(int)queryPos.x][(int)queryPos.y][(int)queryPos.z].type == AIR) {
+	if (blocks[(int)queryPos.x][(int)queryPos.y][(int)queryPos.z] == AIR) {
 		return true;
 	}
 
 	return false;
-}
-
-glm::vec3 Chunk::getBlockPosFromFace(glm::vec3& facePos, BlockFace face) {
-	// shift facePos to [0-chunkSize], then offset by the face normal
-	return facePos - startPos - (faceNormals[face] * 0.5f);
-}
-
-bool Chunk::isPosInChunk(glm::vec3 pos) {
-	bool inX = pos.x >= startPos.x && pos.x < startPos.x + chunkSize.x;
-	bool inY = pos.y >= startPos.y && pos.y < startPos.y + chunkSize.y;
-	bool inZ = pos.z >= startPos.z && pos.z < startPos.z + chunkSize.z;
-
-	return (inX && inY && inZ);
-}
-
-bool Chunk::isPosInChunkSize(glm::vec3 pos) {
-	return pos.x >= 0 && pos.x < chunkSize.x &&
-		pos.y >= 0 && pos.y < chunkSize.y &&
-		pos.z >= 0 && pos.z < chunkSize.z;
 }

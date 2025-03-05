@@ -2,7 +2,7 @@
 #include <glm/glm.hpp>
 #include <vector>
 
-#include "Block.h"
+#include "BlockAttribs.h"
 #include "glad/glad.h"
 
 constexpr glm::vec3 chunkSize = {16, 16, 128};
@@ -47,12 +47,6 @@ public:
     void init();
     void render();
 
-    // @returns Whether a position is within the chunk boundaries. [startPos -> startPos + chunkSize)
-    bool isPosInChunk(glm::vec3 pos);
-
-    // @returns Whether a position is within the chunk size. [0 -> chunkSize)
-    bool isPosInChunkSize(glm::vec3 pos);
-
     // @returns The chunk index that contains the position
     static glm::vec2 posToChunkIndex(const glm::vec3& pos) {
         return glm::floor(pos / chunkSize);
@@ -71,10 +65,8 @@ private:
     void generateFaces();
     void initShaderVars();
 
-    void insertFaceData(Block& b);
+    void insertFaceData(glm::vec3& blockIndex);
     bool isFaceVisible(glm::vec3& pos, BlockFace face);
-
-    glm::vec3 getBlockPosFromFace(glm::vec3& facePos, BlockFace face);
 
 private:
     glm::vec3 startPos = { 0, 0, 0 };
@@ -83,6 +75,6 @@ private:
     GLuint vao, vbo, ebo;
     GLuint faceDataBuffer;
     std::vector<FaceData> faceData = {};
-    std::vector<std::vector<std::vector<Block>>> blocks;
+    std::vector<std::vector<std::vector<BlockType>>> blocks;
 };
 
