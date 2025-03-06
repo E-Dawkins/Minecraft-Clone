@@ -20,16 +20,10 @@ void checkGLError(const char* stmt, const char* fname, int line) {
 } while (0)
 
 Chunk::Chunk(glm::vec2 _chunkIndex) :
-	blocks((size_t)chunkSize.x, std::vector<std::vector<Block>>((size_t)chunkSize.y, std::vector<Block>((size_t)chunkSize.z)))
+	blocks((size_t)chunkSize.x, std::vector<std::vector<BlockType>>((size_t)chunkSize.y, std::vector<BlockType>((size_t)chunkSize.z, BlockType::AIR)))
 {
 	startPos = glm::vec3(_chunkIndex, 0) * chunkSize;
 	chunkIndex = _chunkIndex;
-
-	generateChunk();
-	DebugClock::recordTime("Start gen faces");
-	generateFaces();
-	DebugClock::recordTime("Start optimize faces");
-	optimizeFaces();
 }
 
 Chunk::~Chunk()
@@ -48,6 +42,10 @@ Chunk::~Chunk()
 
 void Chunk::init()
 {
+  DebugClock::recordTime("Start gen chunk");
+  generateChunk();
+	DebugClock::recordTime("Start gen faces");
+	generateFaces();
 	DebugClock::recordTime("Start init shader vars");
 	initShaderVars();
 	DebugClock::recordTime("Finish gen chunk");
@@ -56,7 +54,11 @@ void Chunk::init()
 void Chunk::render()
 {
 	// bind the correct texture before rendering
-	glBindTexture(GL_TEXTURE_2D, AssetManager::getTextureId("texture-atlas"));
+	glBindTexture(GL_TEXTURE_2D, AssetManager::getAssetHandle("texture-atlas"));
+
+	// bind the correct chunk index
+	GLint chunkIndexLoc = glGetUniformLocation(AssetManager::getAssetHandle("generic"), "chunkIndex");
+	glUniform2f(chunkIndexLoc, chunkIndex.x, chunkIndex.y);
 
 	// bind vertex array -> draw vertices -> un-bind vertex array
 	glBindVertexArray(vao);
@@ -75,10 +77,7 @@ void Chunk::generateChunk()
 			for (GLuint z = 0; z < chunkSize.z; z++) {
 				glm::vec3 position = startPos + glm::vec3(x, y, z);
 
-				blocks[x][y][z] = {
-					position,
-					WorldGenerator::getBlockTypeAtPos(position)
-				};
+				blocks[x][y][z] = WorldGenerator::getBlockTypeAtPos(position);
 			}
 		}
 	}
@@ -89,164 +88,15 @@ void Chunk::generateFaces()
 	for (GLuint x = 0; x < chunkSize.x; x++) {
 		for (GLuint y = 0; y < chunkSize.y; y++) {
 			for (GLuint z = 0; z < chunkSize.z; z++) {
-				Block& b = blocks[x][y][z];
-				if (b.type == AIR) {
+				if (blocks[x][y][z] == AIR) {
 					continue;
 				}
 
-				insertFaceData(b);
+				glm::vec3 position = {x, y, z};
+				insertFaceData(position);
 			}
 		}
 	}
-}
-
-void Chunk::optimizeFaces()
-{
-	// a brute force implementation of greedy meshing
-	// could probably optimize this if it becomes a bottle-neck
-
-	std::vector<FaceData> optimizedFaces = {};
-
-	// returns if a pre-optimized face is a part of an optimized one
-	auto hasFaceBeenChecked = [&](glm::vec3 queryPos, int refId) {
-		for (FaceData& f : optimizedFaces) {
-			// same id, now check if the optimized face contains the query face
-			if (f.id == refId) {
-				glm::vec3 blockPos = getBlockPosFromFace(f.offset, f.id);
-				glm::vec3 faceMin = blockPos - f.size * 0.5f;
-				glm::vec3 faceMax = blockPos + f.size * 0.5f;
-				if (queryPos.x >= faceMin.x && queryPos.x <= faceMax.x &&
-					queryPos.y >= faceMin.y && queryPos.y <= faceMax.y &&
-					queryPos.z >= faceMin.z && queryPos.z <= faceMax.z) {
-					return true;
-				}
-			}
-		}
-
-		return false;
-	};
-
-	// returns if a face is valid to be added to an optimized one
-	// i.e. within chunk bounds and hasn't already been optimized
-	auto isValidFace = [&](glm::vec3 queryPos, BlockType refType, int refId) {
-		if (!isPosInChunkSize(queryPos)) {
-			return false;
-		}
-
-		Block& queryBlock = blocks[(int)queryPos.x][(int)queryPos.y][(int)queryPos.z];
-
-		bool sameType = queryBlock.type == refType;
-		bool faceVisible = queryBlock.visibleFaces[refId];
-		bool hasBeenChecked = hasFaceBeenChecked(queryPos, refId);
-		return (sameType && faceVisible && !hasBeenChecked);
-	};
-
-	const glm::vec3 axesToCheck[FACE_COUNT / 2][2]{
-		{ { 1, 0, 0 }, { 0, 0, 1 } }, // front & back
-		{ { 0, 1, 0 }, { 0, 0, 1 } }, // right & left
-		{ { 1, 0, 0 }, { 0, 1, 0 } }, // top & bottom
-	};
-
-	// while we have faces to optimize run this logic
-	std::list<FaceData> facesToCheck(faceData.begin(), faceData.end());
-	while (!facesToCheck.empty()) {
-		FaceData currentFace = facesToCheck.front();
-		facesToCheck.pop_front();
-
-
-		glm::vec3 currentPos = getBlockPosFromFace(currentFace.offset, currentFace.id);
-		Block& currentBlock = blocks[(int)currentPos.x][(int)currentPos.y][(int)currentPos.z];
-
-		glm::vec3 min = currentPos;
-		glm::vec3 max = currentPos;
-
-		// first axis
-		glm::vec3 firstAxis = axesToCheck[currentFace.id / 2][0];
-		// should we flip the direction?
-		firstAxis = (isValidFace(currentPos + firstAxis, currentBlock.type, currentFace.id) ? firstAxis : -firstAxis);
-		for (float i = 1; ; i++) {
-			glm::vec3 queryPos = currentPos + firstAxis * i;
-			
-			// if face is valid, update optimized face min/max
-			if (isValidFace(queryPos, currentBlock.type, currentFace.id)) {
-				min = glm::min(min, queryPos);
-				max = glm::max(max, queryPos);
-			}
-			else {
-				currentPos += firstAxis * (i - 1);
-				break;
-			}
-		}
-
-		float firstAxisCount = glm::distance(min, max);
-
-		// second axis
-		glm::vec3 secondAxis = axesToCheck[currentFace.id / 2][1];
-		// should we flip the direction?
-		secondAxis = (isValidFace(currentPos + secondAxis, currentBlock.type, currentFace.id) ? secondAxis : -secondAxis);
-		for (float i = 1; ; i++) {
-			glm::vec3 queryPos = currentPos + secondAxis * i;
-
-			// check all faces along the -firstAxis
-			bool allFacesValid = (firstAxisCount != 0);
-			for (float j = 1; j <= firstAxisCount; j++) {
-				glm::vec3 checkPos = queryPos - firstAxis * j;
-
-				if (!isValidFace(checkPos, currentBlock.type, currentFace.id)) {
-					allFacesValid = false;
-					break;
-				}
-			}
-
-			// if face is valid, update optimized face min/max
-			if (allFacesValid && isValidFace(queryPos, currentBlock.type, currentFace.id)) {
-				min = glm::min(min, queryPos);
-				max = glm::max(max, queryPos);
-			}
-			else {
-				break;
-			}
-		}
-
-		// we have the min and max pos of the 'region'
-		// replace all faces in region with one big face
-
-		// remove all faces in region from list
-		glm::vec3 dir = max - min;
-		float distX = glm::abs(dir.x);
-		float distY = glm::abs(dir.y);
-		float distZ = glm::abs(dir.z);
-		for (float x = 0; x <= distX; x++) {
-			for (float y = 0; y <= distY; y++) {
-				for (float z = 0; z <= distZ; z++) {
-					glm::vec3 faceOffset = currentFace.offset + glm::vec3(x, y, z);
-					auto it = std::find_if(facesToCheck.begin(), facesToCheck.end(),
-						[&](const FaceData& face) {
-							return face.offset == faceOffset;
-						}
-					);
-
-					if (it != facesToCheck.end()) {
-						facesToCheck.erase(it);
-					}
-				}
-			}
-		}
-
-		// replace missing faces with one big face
-		glm::vec3 normal = faceNormals[currentFace.id];
-		glm::vec3 flipped = glm::vec3(normal.x == 0 ? 1 : 0,
-									  normal.y == 0 ? 1 : 0,
-									  normal.z == 0 ? 1 : 0);
-		currentFace.offset = startPos + min + (dir * 0.5f) + (normal * 0.5f);
-		currentFace.size = (glm::vec3(distX, distY, distZ) + glm::vec3(1.0f)) * flipped;
-		optimizedFaces.emplace_back(currentFace);
-	}
-
-	// and finally replace old face data with new optimized face data
-	faceData.clear();
-	faceData.shrink_to_fit();
-	faceData.swap(optimizedFaces);
 }
 
 void Chunk::initShaderVars()
@@ -290,39 +140,28 @@ void Chunk::initShaderVars()
 	GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, faceDataBuffer));
 	GL_CHECK(glBufferData(GL_ARRAY_BUFFER, sizeof(FaceData) * faceData.size(), faceData.data(), GL_STATIC_DRAW));
 
-	// Offset (per-instance data)
-	GL_CHECK(glEnableVertexAttribArray(2));
-	GL_CHECK(glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(FaceData), (void*)0));
-	GL_CHECK(glVertexAttribDivisor(2, 1)); // one offset per-face
+	// Position (per-instance data)
+	glEnableVertexAttribArray(2);
+	glVertexAttribIPointer(2, 1, GL_UNSIGNED_SHORT, sizeof(FaceData), (void*)0);
+	glVertexAttribDivisor(2, 1);
 
-	// Id (per-instance data)
-	GL_CHECK(glEnableVertexAttribArray(3));
-	GL_CHECK(glVertexAttribIPointer(3, 1, GL_INT, sizeof(FaceData), (void*)offsetof(FaceData, id)));
-	GL_CHECK(glVertexAttribDivisor(3, 1)); // one id per-face
-
-	// Texcoord Start (per-instance data)
-	GL_CHECK(glEnableVertexAttribArray(4));
-	GL_CHECK(glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, sizeof(FaceData), (void*)offsetof(FaceData, texcoordStart)));
-	GL_CHECK(glVertexAttribDivisor(4, 1)); // one texcoord start per-face
-
-	// Size (per-instance data)
-	GL_CHECK(glEnableVertexAttribArray(5));
-	GL_CHECK(glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(FaceData), (void*)offsetof(FaceData, size)));
-	GL_CHECK(glVertexAttribDivisor(5, 1)); // one size per-face
-
-	GL_CHECK(glBindVertexArray(0));
+	// Direction-Id (per-instance data)
+	glEnableVertexAttribArray(3);
+	glVertexAttribIPointer(3, 1, GL_UNSIGNED_BYTE, sizeof(FaceData), (void*)offsetof(FaceData, direction_id));
+	glVertexAttribDivisor(3, 1);
 }
 
-void Chunk::insertFaceData(Block& b)
+void Chunk::insertFaceData(glm::vec3& blockIndex)
 {
-	auto insertData = [&](BlockFace id) {
-		b.visibleFaces[id] = isFaceVisible(b.position, id);
-		if (b.visibleFaces[id]) {
-			faceData.push_back({
-				b.position + faceNormals[id] * 0.5f,
-				id,
-				b.getTextureCoords(id, 0)
-			});
+	auto insertData = [&](BlockFace faceDirection) {
+		if (isFaceVisible(blockIndex, faceDirection)) {
+			FaceData f;
+			f.setPosition(blockIndex);
+			BlockType type = blocks[(int)blockIndex.x][(int)blockIndex.y][(int)blockIndex.z];
+			f.setBlockId(blockTextureIds[type][faceDirection]);
+			f.setDirection(faceDirection);
+
+			faceData.emplace_back(f);
 		}
 	};
 
@@ -339,43 +178,26 @@ bool Chunk::isFaceVisible(glm::vec3& pos, BlockFace face)
 	glm::vec3 offset = faceNormals[face];
 	glm::vec3 queryPos = pos + offset;
 
-	if (!isPosInChunk(queryPos)) {
-		glm::vec2 chunkIndex = posToChunkIndex(queryPos);
-		Chunk* queryChunk = ChunkManager::getInstance()->getChunkAtIndex(chunkIndex);
+	bool withinMin = glm::all(glm::greaterThanEqual(queryPos, glm::vec3(0)));
+	bool withinMax = glm::all(glm::lessThan(queryPos, chunkSize));
+	if (!withinMin || !withinMax) {
+		glm::vec2 index = posToChunkIndex(queryPos);
+		Chunk* queryChunk = ChunkManager::getInstance()->getChunkAtIndex(index);
 
-		if (!queryChunk || queryPos.z < 0 || queryPos.z >= chunkSize.z) {
+		if (!queryChunk) {
 			return true; // default to true if no chunk exists at queryPos
-						 // or we are querying outside the valid height range
 		}
 		else {
-			return (WorldGenerator::getBlockTypeAtPos(queryPos) == AIR);
+			glm::vec3 globalQueryPos = queryPos + startPos;
+			return (WorldGenerator::getBlockTypeAtPos(globalQueryPos) == AIR);
 		}
 	}
 
 	// wrap queryPos before indexing into blocks array
 	queryPos = glm::mod(queryPos, chunkSize);
-	if (blocks[(int)queryPos.x][(int)queryPos.y][(int)queryPos.z].type == AIR) {
+	if (blocks[(int)queryPos.x][(int)queryPos.y][(int)queryPos.z] == AIR) {
 		return true;
 	}
 
 	return false;
-}
-
-glm::vec3 Chunk::getBlockPosFromFace(glm::vec3& facePos, BlockFace face) {
-	// shift facePos to [0-chunkSize], then offset by the face normal
-	return facePos - startPos - (faceNormals[face] * 0.5f);
-}
-
-bool Chunk::isPosInChunk(glm::vec3 pos) {
-	bool inX = pos.x >= startPos.x && pos.x < startPos.x + chunkSize.x;
-	bool inY = pos.y >= startPos.y && pos.y < startPos.y + chunkSize.y;
-	bool inZ = pos.z >= startPos.z && pos.z < startPos.z + chunkSize.z;
-
-	return (inX && inY && inZ);
-}
-
-bool Chunk::isPosInChunkSize(glm::vec3 pos) {
-	return pos.x >= 0 && pos.x < chunkSize.x &&
-		pos.y >= 0 && pos.y < chunkSize.y &&
-		pos.z >= 0 && pos.z < chunkSize.z;
 }

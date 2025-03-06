@@ -1,21 +1,23 @@
 #version 330 core
 
+// Vertex data
 layout (location = 0) in vec3 position;
 layout (location = 1) in vec2 texcoord;
-layout (location = 2) in vec3 offset;
-layout (location = 3) in int faceId;
-layout (location = 4) in vec2 texcoordStart;
-layout (location = 5) in vec3 faceSize;
+
+// Face data
+layout (location = 2) in uint blockPos;
+layout (location = 3) in uint directionId;
 
 out vec2 Texcoord;
-out vec2 TexcoordStart;
 out float DistanceFromCamera;
+flat out uint TextureId;
 
 uniform mat4 view;
 uniform mat4 proj;
+uniform vec2 chunkIndex;
 
-vec3 getRotatedPos() {
-   switch (faceId) {
+vec3 getRotatedPos(uint direction) {
+   switch (direction) {
       case 0: return vec3( position.x, -position.z, position.y);
       case 1: return vec3(-position.x,  position.z, position.y);
       case 2: return vec3(-position.z, -position.x, position.y);
@@ -25,32 +27,26 @@ vec3 getRotatedPos() {
    }
 }
 
-vec2 get2DFaceSize() {
-   // since we know there is one axis set to '0'
-   // we can easily ignore the 'empty' axis
-   vec2 faceSize2D = vec2(0, 0);
-
-   for (int i = 0; i < 3; i++) {
-      if (faceSize[i] != 0) {
-         if (faceSize2D.x == 0) {
-            faceSize2D.x = faceSize[i];
-         } else {
-            faceSize2D.y = faceSize[i];
-         }
-      }
+vec3 getFaceOffset(uint direction) {
+   switch (direction) {
+      case 0: return vec3(0, -0.5f, 0);
+      case 1: return vec3(0,  0.5f, 0);
+      case 2: return vec3(-0.5f, 0, 0);
+      case 3: return vec3( 0.5f, 0, 0);
+      case 5: return vec3(0, 0, -0.5f);
+      default: return vec3(0, 0, 0.5f);
    }
-
-   return faceSize2D;
 }
 
 void main() {
-   float blockTexSize = 16.f / 128.f;
-   Texcoord = (texcoord * blockTexSize) * get2DFaceSize();
-   TexcoordStart = texcoordStart;
+   uint iDirection = (directionId >> 4) & 15u;
+   vec3 vBlockPos = vec3((blockPos >> 12) & 15u, (blockPos >> 8) & 15u, blockPos & 255u);
 
-   vec3 offsetPos = (getRotatedPos() * faceSize) + offset;
+   vec3 offsetPos = getRotatedPos(iDirection) + vBlockPos + getFaceOffset(iDirection) + vec3(chunkIndex * vec2(16.f, 16.f), 0);
    vec4 viewPos = view * vec4(offsetPos, 1.0);
    gl_Position = proj * viewPos;
 
+   Texcoord = texcoord / 4.f; // remap from 0-1 to 0-0.25
    DistanceFromCamera = length(viewPos.xyz);
+   TextureId = directionId & 15u;
 }

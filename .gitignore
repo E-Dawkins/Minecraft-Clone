@@ -439,3 +439,4 @@ FodyWeavers.xsd
 # Include libraries in dependencies folder
 !Minecraft-Clone/dependencies/lib/*.lib
 !Minecraft-Clone/dependencies/lib/*.dll
+!Minecraft-Clone/dependencies/lib/*.pdb

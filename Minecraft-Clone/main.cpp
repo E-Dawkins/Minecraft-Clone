@@ -34,7 +34,6 @@ void processInput(GLFWwindow* window);
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height);
 void cursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
-std::string loadShader(std::string path);
 void setRenderingMode(GLuint newMode);
 void reloadChunks();
 
@@ -74,43 +73,8 @@ int main(void)
         return -1;
     }
 
-    std::string vertexShaderStr = loadShader("./assets/generic.vert");
-    const char* vertexShaderSrc = vertexShaderStr.c_str();
-    std::string fragmentShaderStr = loadShader("./assets/generic.frag");
-    const char* fragmentShaderSrc = fragmentShaderStr.c_str();
-
-    // Create and compile the vertex shader
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSrc, 0); // length 0 means opengl will figure it out for us
-    glCompileShader(vertexShader);
-    GLint success;
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        char infoLog[512];
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        std::cerr << "ERROR::VERTEX_SHADER::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
-
-
-    // Create and compile the fragment shader
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSrc, 0); // length 0 means opengl will figure it out for us
-    glCompileShader(fragmentShader);
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        char infoLog[512];
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        std::cerr << "ERROR::FRAGMENT_SHADER::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
-
-
-    // Link vertex and fragment shaders to a shader program
-    GLuint shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glBindFragDataLocation(shaderProgram, 0, "fragColor");
-    glLinkProgram(shaderProgram);
-    glUseProgram(shaderProgram);
+    AssetManager::loadShader("generic", "./assets/generic.vert", "./assets/generic.frag");
+    GLuint shaderProgram = AssetManager::getAssetHandle("generic");
 
     // Bind shader uniforms
     // Set up projection
@@ -132,7 +96,7 @@ int main(void)
     DebugClock::setEnabled(false);
     DebugClock::recordTime("Chunk gen start");
 
-    ChunkManager::getInstance()->initChunks(renderDistance);
+    ChunkManager::getInstance()->initChunks((uint8_t)renderDistance);
 
     DebugClock::recordTime("Chunk gen end");
     DebugClock::printTimePoints();
@@ -236,8 +200,6 @@ int main(void)
     delete ChunkManager::getInstance();
 
     glDeleteProgram(shaderProgram);
-    glDeleteShader(fragmentShader);
-    glDeleteShader(vertexShader);
 
     glfwTerminate();
     return 0;
@@ -275,6 +237,7 @@ void processInput(GLFWwindow* window) {
     }
 }
 
+#pragma warning(suppress: 4100)
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height) {
     // tell OpenGL that the new rendering area is at position (0, 0) and extents (width, height)
     glViewport(0, 0, width, height);
@@ -293,21 +256,9 @@ void cursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
     glfwSetCursorPos(window, halfWidth, halfHeight);
 }
 
+#pragma warning(suppress: 4100)
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
     cam.moveSpeed = std::max(cam.moveSpeed + (float)yoffset, 1.0f);
-}
-
-std::string loadShader(std::string path) {
-    std::ifstream file(path);
-    if (!file.is_open()) {
-        std::cout << "Failed to load shader at: " << path << std::endl;
-        return "";
-    }
-
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-
-    return buffer.str();
 }
 
 void setRenderingMode(GLuint newMode) {
