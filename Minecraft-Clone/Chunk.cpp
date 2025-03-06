@@ -24,6 +24,11 @@ Chunk::Chunk(glm::vec2 _chunkIndex) :
 {
 	startPos = glm::vec3(_chunkIndex, 0) * chunkSize;
 	chunkIndex = _chunkIndex;
+
+	DebugClock::recordTime("Start gen chunk");
+	generateChunk();
+	DebugClock::recordTime("Start gen faces");
+	generateFaces();
 }
 
 Chunk::~Chunk()
@@ -42,10 +47,6 @@ Chunk::~Chunk()
 
 void Chunk::init()
 {
-  DebugClock::recordTime("Start gen chunk");
-  generateChunk();
-	DebugClock::recordTime("Start gen faces");
-	generateFaces();
 	DebugClock::recordTime("Start init shader vars");
 	initShaderVars();
 	DebugClock::recordTime("Finish gen chunk");
