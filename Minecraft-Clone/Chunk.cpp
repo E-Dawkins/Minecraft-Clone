@@ -6,23 +6,32 @@
 #include "ChunkManager.h"
 #include "DebugClock.h"
 
+void checkGLError(const char* stmt, const char* fname, int line) {
+	GLenum err = glGetError();
+	if (err != GL_NO_ERROR) {
+		printf("OpenGL error %08x, at %s:%i - for %s\n", err, fname, line, stmt);
+		exit(1);
+	}
+}
+
+#define GL_CHECK(stmt) do { \
+    stmt; \
+    checkGLError(#stmt, __FILE__, __LINE__); \
+} while (0)
+
 Chunk::Chunk(glm::vec2 _chunkIndex) :
 	blocks((size_t)chunkSize.x, std::vector<std::vector<BlockType>>((size_t)chunkSize.y, std::vector<BlockType>((size_t)chunkSize.z, BlockType::AIR)))
 {
 	startPos = glm::vec3(_chunkIndex, 0) * chunkSize;
 	chunkIndex = _chunkIndex;
-
-	generateChunk();
 }
 
 Chunk::~Chunk()
 {
-	glDeleteBuffers(1, &ebo);
-	glDeleteBuffers(1, &vbo);
+	GLuint buffers[] = {vao, vbo, faceDataBuffer};
+	glDeleteBuffers(3, buffers);
 
 	glDeleteVertexArrays(1, &vao);
-
-	glDeleteBuffers(1, &faceDataBuffer);
 
 	faceData.clear();
 	faceData.shrink_to_fit();
@@ -33,6 +42,8 @@ Chunk::~Chunk()
 
 void Chunk::init()
 {
+  DebugClock::recordTime("Start gen chunk");
+  generateChunk();
 	DebugClock::recordTime("Start gen faces");
 	generateFaces();
 	DebugClock::recordTime("Start init shader vars");
@@ -104,30 +115,30 @@ void Chunk::initShaderVars()
 	};
 
 	// Create vertex array object
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
+	GL_CHECK(glGenVertexArrays(1, &vao));
+	GL_CHECK(glBindVertexArray(vao));
 
 	// Create and fill vertex buffer object
-	glGenBuffers(1, &vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+	GL_CHECK(glGenBuffers(1, &vbo));
+	GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, vbo));
+	GL_CHECK(glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW));
 
 	// Create and fill element buffer object
-	glGenBuffers(1, &ebo);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quadIndices), quadIndices, GL_STATIC_DRAW);
+	GL_CHECK(glGenBuffers(1, &ebo));
+	GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo));
+	GL_CHECK(glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quadIndices), quadIndices, GL_STATIC_DRAW));
 
 	// Position (main vbo)
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, vertexSize, 0);
-	glEnableVertexAttribArray(0);
+	GL_CHECK(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, vertexSize, 0));
+	GL_CHECK(glEnableVertexAttribArray(0));
 
 	// Texcoord (main vbo)
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, vertexSize, (void*)(3 * sizeof(float)));
-	glEnableVertexAttribArray(1);
+	GL_CHECK(glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, vertexSize, (void*)(3 * sizeof(float))));
+	GL_CHECK(glEnableVertexAttribArray(1));
 	
-	glGenBuffers(1, &faceDataBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, faceDataBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(FaceData) * faceData.size(), faceData.data(), GL_STATIC_DRAW);
+	GL_CHECK(glGenBuffers(1, &faceDataBuffer));
+	GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, faceDataBuffer));
+	GL_CHECK(glBufferData(GL_ARRAY_BUFFER, sizeof(FaceData) * faceData.size(), faceData.data(), GL_STATIC_DRAW));
 
 	// Position (per-instance data)
 	glEnableVertexAttribArray(2);

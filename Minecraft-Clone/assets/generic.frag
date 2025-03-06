@@ -7,6 +7,7 @@ flat in uint TextureId;
 out vec4 fragColor;
 
 uniform sampler2D tex;
+uniform uint renderDist;
 
 void main() {
    float maxDistance = 24.0; // full fade will be at this distance
