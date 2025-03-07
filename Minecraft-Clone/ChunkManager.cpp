@@ -13,11 +13,37 @@ ChunkManager::~ChunkManager() {
 }
 
 void ChunkManager::initChunks(uint8_t renderDistance) {
-	for (int x = -renderDistance; x <= renderDistance; x++) {
-		for (int y = -renderDistance; y <= renderDistance; y++) {
-			glm::vec2 chunkIndex = { x, y };
-			addChunk(chunkIndex);
+	if (renderDistance == 0) {
+		printf("Render distance 0 not allowed!\n");
+		return;
+	}
+
+	auto topEdge = [&](int dist, int count, bool flip) {
+		for (int i = 0; i < count; i++) {
+			int multi = (flip ? -1 : 1);
+			addChunk({ (-dist + i) * multi, dist * multi });
 		}
+	};
+
+	auto rightEdge = [&](int dist, int count, bool flip) {
+		for (int i = 0; i < count; i++) {
+			int multi = (flip ? -1 : 1);
+			addChunk({ dist * multi, (dist - 1 - i) * multi });
+		}
+	};
+	
+	// always add the center chunk
+	topEdge(0, 1, false);
+
+	// then add 'rings' of chunks around the center
+	for (int i = 1; i < renderDistance; i++) {
+		int topCount = (2 * i) + 1;
+		int rightCount = (2 * (i - 1)) + 1;
+
+		topEdge(i, topCount, false);
+		rightEdge(i, rightCount, false);
+		topEdge(i, topCount, true);
+		rightEdge(i, rightCount, true);
 	}
 }
 
@@ -75,7 +101,7 @@ void ChunkManager::removeChunk(glm::vec2& chunkIndex) {
 	worldChunks.erase(chunkIndex);
 }
 
-void ChunkManager::addChunk(glm::vec2& chunkIndex) {
+void ChunkManager::addChunk(const glm::vec2& chunkIndex) {
 	std::lock_guard<std::mutex> lock(chunkMutex);
 	
 	indexToLoad.push(chunkIndex);

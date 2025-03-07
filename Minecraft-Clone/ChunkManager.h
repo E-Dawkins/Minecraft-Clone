@@ -35,7 +35,7 @@ public:
 	const std::pair<const glm::vec2, Chunk*>& at(size_t index) const;
 
 	void removeChunk(glm::vec2& chunkIndex);
-	void addChunk(glm::vec2& chunkIndex);
+	void addChunk(const glm::vec2 & chunkIndex);
 
 	void checkForLoadedChunks();
 

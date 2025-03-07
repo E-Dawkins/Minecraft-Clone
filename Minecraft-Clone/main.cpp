@@ -301,7 +301,7 @@ void reloadChunks() {
             float distX = glm::distance(chunkIndex.x, curChunkIndex.x);
             float distY = glm::distance(chunkIndex.y, curChunkIndex.y);
 
-            if (distX > renderDistance || distY > renderDistance) {
+            if (distX >= renderDistance || distY >= renderDistance) {
                 chunkManager->removeChunk(curChunkIndex);
                 newIndexes.emplace_back(chunkIndex - (curChunkIndex - camChunkIndex));
             }
