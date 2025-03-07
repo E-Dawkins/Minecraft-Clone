@@ -10,6 +10,12 @@ public:
 
 		dir = glm::normalize(dir);
 		forward = dir;
+
+		// if 'forward' and 'up' are nearly colinear, change default up direction
+		if (glm::abs(glm::dot(forward, up)) >= 1.f - glm::epsilon<float>()) {
+			up = { 0, 1, 0 };
+		}
+
 		right = glm::normalize(glm::cross(forward, up));
 		pitch = glm::degrees(asin(dir.z));
 		yaw = glm::degrees(atan2(dir.y, dir.x));

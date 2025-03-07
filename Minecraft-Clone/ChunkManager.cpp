@@ -3,6 +3,10 @@
 
 ChunkManager* ChunkManager::instance = nullptr;
 
+ChunkManager::ChunkManager() {
+	loadingThread = std::thread(&ChunkManager::loadingThreadFunc, this);
+}
+
 ChunkManager::~ChunkManager() {
 	shouldLoadChunks = false;
 	loadingThread.join();
@@ -12,15 +16,9 @@ void ChunkManager::initChunks(uint8_t renderDistance) {
 	for (int x = -renderDistance; x <= renderDistance; x++) {
 		for (int y = -renderDistance; y <= renderDistance; y++) {
 			glm::vec2 chunkIndex = { x, y };
-			worldChunks[chunkIndex] = new Chunk(chunkIndex);
+			addChunk(chunkIndex);
 		}
 	}
-
-	for (auto& c : worldChunks) {
-		c.second->init();
-	}
-
-	loadingThread = std::thread(&ChunkManager::loadingThreadFunc, this);
 }
 
 void ChunkManager::renderChunks() {

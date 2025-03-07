@@ -23,6 +23,7 @@ public:
 		return instance;
 	}
 
+	ChunkManager();
 	~ChunkManager();
 
 	void initChunks(uint8_t renderDistance);

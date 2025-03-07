@@ -33,7 +33,7 @@ Chunk::Chunk(glm::vec2 _chunkIndex) :
 
 Chunk::~Chunk()
 {
-	GLuint buffers[] = {vao, vbo, faceDataBuffer};
+	GLuint buffers[] = {vbo, ebo, faceDataBuffer};
 	glDeleteBuffers(3, buffers);
 
 	glDeleteVertexArrays(1, &vao);
