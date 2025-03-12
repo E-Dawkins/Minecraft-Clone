@@ -52,6 +52,19 @@ public:
         return glm::floor(pos / chunkSize);
     }
 
+    const BlockType getBlockAtIndex(const glm::ivec3& index) const {
+        if (glm::any(glm::greaterThan(glm::vec3(index), chunkSize)) ||
+            glm::any(glm::lessThan(glm::vec3(index), glm::vec3(0)))) {
+            return AIR;
+        }
+
+        return blocks[index.x][index.y][index.z];
+    }
+    
+    const glm::vec3 getStartPos() const {
+        return startPos;
+    }
+
     const glm::vec2 getChunkIndex() const {
         return chunkIndex;
     }

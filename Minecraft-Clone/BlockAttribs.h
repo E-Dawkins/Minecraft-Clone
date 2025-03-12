@@ -1,5 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
+#include <string_view>
+#include <algorithm>
 
 enum BlockType : int8_t {
 	AIR = -1,
@@ -10,6 +12,16 @@ enum BlockType : int8_t {
 
 	TYPE_COUNT
 };
+
+// +1 to account for AIR being -1
+constexpr std::string_view BlockNames[TYPE_COUNT + 1] = {
+	"Air",
+	"Dirt",
+	"Grass",
+	"Stone",
+	"Cobblestone"
+};
+static_assert(std::ranges::all_of(BlockNames, [](const std::string_view& s) {return !s.empty(); }), "Not enough block names!");
 
 enum BlockFace : uint8_t {
 	FRONT = 0,

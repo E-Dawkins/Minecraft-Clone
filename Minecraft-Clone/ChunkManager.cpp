@@ -94,6 +94,17 @@ const std::pair<const glm::vec2, Chunk*>& ChunkManager::at(size_t index) const {
 	return *itr;
 }
 
+const BlockType ChunkManager::getBlockAtPos(const glm::ivec3& pos) const {
+	glm::vec2 chunkIndex = Chunk::posToChunkIndex(pos);
+	Chunk* c = getInstance()->getChunkAtIndex(chunkIndex);
+
+	if (c) {
+		return c->getBlockAtIndex(pos - glm::ivec3(c->getStartPos()));
+	}
+	
+	return AIR;
+}
+
 void ChunkManager::removeChunk(glm::vec2& chunkIndex) {
 	std::lock_guard<std::mutex> lock(chunkMutex);
 

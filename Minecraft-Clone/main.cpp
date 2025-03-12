@@ -22,6 +22,7 @@
 #include "Camera.h"
 #include "ChunkManager.h"
 #include "DebugClock.h"
+#include "Raycast.h"
 
 const int WINDOW_WIDTH = 1280, WINDOW_HEIGHT = 960;
 Camera cam = Camera({ chunkSize.x / 2, chunkSize.y / 2, 12 }, { 1, 1, 0 });
@@ -234,6 +235,11 @@ void processInput(GLFWwindow* window) {
 
     if (glfwGetKey(window, GLFW_KEY_F1) == GLFW_RELEASE) {
         f1Pressed = false;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+        HitResult r = Raycast::getHitResult(cam.getPosition(), cam.getForwardDir(), 10.f);
+        std::cout << r.to_string() << "\n";
     }
 }
 
