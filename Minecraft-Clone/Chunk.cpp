@@ -70,6 +70,30 @@ void Chunk::render()
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+void Chunk::update() {
+	for (auto& i : indexesToDelete) {
+		blocks[i.x][i.y][i.z] = AIR;
+	}
+
+	if (!indexesToDelete.empty()) {
+		indexesToDelete.clear();
+		indexesToDelete.shrink_to_fit();
+
+		faceData.clear();
+		faceData.shrink_to_fit();
+		generateFaces();
+
+		GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, faceDataBuffer));
+		GL_CHECK(glBufferData(GL_ARRAY_BUFFER, sizeof(FaceData) * faceData.size(), faceData.data(), GL_STATIC_DRAW));
+	}
+}
+
+void Chunk::deleteBlockAtIndex(const glm::ivec3 index) {
+	if (isValidBlockIndex(index)) {
+		indexesToDelete.emplace_back(index);
+	}
+}
+
 void Chunk::generateChunk()
 {
 	// for now just generate a platform of blocks
@@ -179,14 +203,13 @@ bool Chunk::isFaceVisible(glm::vec3& pos, BlockFace face)
 	glm::vec3 offset = faceNormals[face];
 	glm::vec3 queryPos = pos + offset;
 
-	bool withinMin = glm::all(glm::greaterThanEqual(queryPos, glm::vec3(0)));
-	bool withinMax = glm::all(glm::lessThan(queryPos, chunkSize));
-	if (!withinMin || !withinMax) {
+	if (!isValidBlockIndex(queryPos)) {
 		glm::vec2 index = posToChunkIndex(queryPos);
 		Chunk* queryChunk = ChunkManager::getInstance()->getChunkAtIndex(index);
 
-		if (!queryChunk) {
+		if (!queryChunk || queryPos.z < 0 || queryPos.z >= chunkSize.z) {
 			return true; // default to true if no chunk exists at queryPos
+						 // or we are querying outside the valid height range
 		}
 		else {
 			glm::vec3 globalQueryPos = queryPos + startPos;
@@ -201,4 +224,11 @@ bool Chunk::isFaceVisible(glm::vec3& pos, BlockFace face)
 	}
 
 	return false;
+}
+
+bool Chunk::isValidBlockIndex(const glm::ivec3 index) const {
+	bool withinMin = glm::all(glm::greaterThanEqual(index, glm::ivec3(0)));
+	bool withinMax = glm::all(glm::lessThan(index, glm::ivec3(chunkSize)));
+
+	return withinMin && withinMax;
 }

@@ -75,6 +75,7 @@ int main(void)
     }
 
     AssetManager::loadShader("generic", "./assets/generic.vert", "./assets/generic.frag");
+    AssetManager::loadShader("line", "./assets/line.vert", "./assets/line.frag");
     GLuint shaderProgram = AssetManager::getAssetHandle("generic");
 
     // Bind shader uniforms
@@ -138,6 +139,7 @@ int main(void)
         }
 
         ChunkManager::getInstance()->checkForLoadedChunks();
+        ChunkManager::getInstance()->updateChunks();
 
         /* Render here */
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -237,9 +239,20 @@ void processInput(GLFWwindow* window) {
         f1Pressed = false;
     }
 
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+    static bool spacePressed = false;
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !spacePressed) {
         HitResult r = Raycast::getHitResult(cam.getPosition(), cam.getForwardDir(), 10.f);
-        std::cout << r.to_string() << "\n";
+        glm::vec2 chunkIndex = Chunk::posToChunkIndex(r.hitPos);
+
+        if (Chunk* c = ChunkManager::getInstance()->getChunkAtIndex(chunkIndex)) {
+            c->deleteBlockAtIndex(r.hitPos - glm::ivec3(c->getStartPos()));
+        }
+
+        spacePressed = true;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_RELEASE) {
+        spacePressed = false;
     }
 }
 

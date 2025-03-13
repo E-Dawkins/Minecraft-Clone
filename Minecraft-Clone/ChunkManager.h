@@ -28,6 +28,7 @@ public:
 	~ChunkManager();
 
 	void initChunks(uint8_t renderDistance);
+	void updateChunks();
 	void renderChunks();
 
 	size_t chunkCount();

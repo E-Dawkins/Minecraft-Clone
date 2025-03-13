@@ -47,6 +47,27 @@ void ChunkManager::initChunks(uint8_t renderDistance) {
 	}
 }
 
+void ChunkManager::updateChunks() {
+	std::lock_guard<std::mutex> lock(chunkMutex);
+
+	std::vector<glm::vec2> nullIndexes = {};
+
+	for (auto& c : worldChunks) {
+		if (c.second == nullptr) {
+			nullIndexes.emplace_back(c.first);
+			continue;
+		}
+
+		c.second->update();
+	}
+
+	for (auto& index : nullIndexes) {
+		worldChunks.erase(index);
+	}
+
+	nullIndexes.clear();
+}
+
 void ChunkManager::renderChunks() {
 	std::lock_guard<std::mutex> lock(chunkMutex);
 
@@ -73,6 +94,8 @@ size_t ChunkManager::chunkCount() {
 }
 
 const size_t ChunkManager::getFaceCount() const {
+	std::lock_guard<std::mutex> lock(getInstance()->chunkMutex);
+
 	size_t count = 0;
 	for (auto& c : worldChunks) {
 		count += c.second->getFaceCount();

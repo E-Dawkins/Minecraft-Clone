@@ -46,6 +46,9 @@ public:
 
     void init();
     void render();
+    void update();
+
+    void deleteBlockAtIndex(const glm::ivec3 index);
 
     // @returns The chunk index that contains the position
     static glm::vec2 posToChunkIndex(const glm::vec3& pos) {
@@ -53,8 +56,7 @@ public:
     }
 
     const BlockType getBlockAtIndex(const glm::ivec3& index) const {
-        if (glm::any(glm::greaterThan(glm::vec3(index), chunkSize)) ||
-            glm::any(glm::lessThan(glm::vec3(index), glm::vec3(0)))) {
+        if (!isValidBlockIndex(index)) {
             return AIR;
         }
 
@@ -80,6 +82,7 @@ private:
 
     void insertFaceData(glm::vec3& blockIndex);
     bool isFaceVisible(glm::vec3& pos, BlockFace face);
+    bool isValidBlockIndex(const glm::ivec3 index) const;
 
 private:
     glm::vec3 startPos = { 0, 0, 0 };
@@ -89,5 +92,7 @@ private:
     GLuint faceDataBuffer;
     std::vector<FaceData> faceData = {};
     std::vector<std::vector<std::vector<BlockType>>> blocks;
+
+    std::vector<glm::ivec3> indexesToDelete = {};
 };
 
