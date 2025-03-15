@@ -33,7 +33,7 @@ public:
 
 	size_t chunkCount();
 	const size_t getFaceCount() const;
-	Chunk* getChunkAtIndex(glm::vec2& index);
+	Chunk * getChunkAtIndex(const glm::vec2 & index);
 	const std::pair<const glm::vec2, Chunk*>& at(size_t index) const;
 	const BlockType getBlockAtPos(const glm::ivec3& pos) const;
 

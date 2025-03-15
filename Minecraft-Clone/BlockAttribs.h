@@ -34,11 +34,15 @@ enum BlockFace : uint8_t {
 	FACE_COUNT
 };
 
-constexpr glm::vec3 faceNormals[FACE_COUNT] = {
+constexpr glm::ivec3 faceNormals[FACE_COUNT] = {
 	{ 0,  -1,  0},		{ 0,  1,  0}, // FRONT-BACK
 	{-1,  0,  0},		{ 1,  0,  0}, // LEFT-RIGHT
 	{ 0,  0,  1},		{ 0,  0, -1}, // TOP-BOTTOM
 };
+
+constexpr BlockFace inverseFace[FACE_COUNT] = { BACK, FRONT, RIGHT, LEFT, BOTTOM, TOP };
+
+constexpr std::string_view faceNames[FACE_COUNT] = { "BACK", "FRONT", "RIGHT", "LEFT", "BOTTOM", "TOP" };
 
 constexpr uint8_t blockTextureIds[TYPE_COUNT][6] = {
 	//	FRONT BACK LEFT RIGHT TOP BOTTOM

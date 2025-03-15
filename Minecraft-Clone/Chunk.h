@@ -36,6 +36,10 @@ struct FaceData {
     const BlockType getBlockId() const {
         return (BlockType)(direction_id & 15);
     }
+
+    const bool operator == (const FaceData& otherFace) {
+        return position == otherFace.position && direction_id == otherFace.direction_id;
+    }
 };
 
 class Chunk
@@ -81,8 +85,11 @@ private:
     void initShaderVars();
 
     void insertFaceData(glm::vec3& blockIndex);
-    bool isFaceVisible(glm::vec3& pos, BlockFace face);
+    bool isFaceVisible(const glm::vec3& pos, BlockFace face);
     bool isValidBlockIndex(const glm::ivec3 index) const;
+
+    void switchFaceState(const glm::ivec3& blockPos, BlockFace face);
+    void reBindFaceBuffer();
 
 private:
     glm::vec3 startPos = { 0, 0, 0 };

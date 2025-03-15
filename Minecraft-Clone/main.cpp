@@ -35,6 +35,7 @@ void processInput(GLFWwindow* window);
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height);
 void cursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
+void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void setRenderingMode(GLuint newMode);
 void reloadChunks();
 
@@ -66,6 +67,7 @@ int main(void)
     glfwSetFramebufferSizeCallback(window, frameBufferSizeCallback);
     glfwSetCursorPosCallback(window, cursorPosCallback);
     glfwSetScrollCallback(window, scrollCallback);
+    glfwSetMouseButtonCallback(window, mouseButtonCallback);
 
     // setup GLAD
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
@@ -238,22 +240,6 @@ void processInput(GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_F1) == GLFW_RELEASE) {
         f1Pressed = false;
     }
-
-    static bool spacePressed = false;
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !spacePressed) {
-        HitResult r = Raycast::getHitResult(cam.getPosition(), cam.getForwardDir(), 10.f);
-        glm::vec2 chunkIndex = Chunk::posToChunkIndex(r.hitPos);
-
-        if (Chunk* c = ChunkManager::getInstance()->getChunkAtIndex(chunkIndex)) {
-            c->deleteBlockAtIndex(r.hitPos - glm::ivec3(c->getStartPos()));
-        }
-
-        spacePressed = true;
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_RELEASE) {
-        spacePressed = false;
-    }
 }
 
 #pragma warning(suppress: 4100)
@@ -278,6 +264,28 @@ void cursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
 #pragma warning(suppress: 4100)
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
     cam.moveSpeed = std::max(cam.moveSpeed + (float)yoffset, 1.0f);
+}
+
+void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+    HitResult r = Raycast::getHitResult(cam.getPosition(), cam.getForwardDir(), 10.f);
+    glm::vec2 chunkIndex = Chunk::posToChunkIndex(r.hitPos);
+
+    // Raycast did not hit a valid block
+    if (r.hitType == BlockType::AIR) {
+        return;
+    }
+
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        if (Chunk* c = ChunkManager::getInstance()->getChunkAtIndex(chunkIndex)) {
+            c->deleteBlockAtIndex(r.hitPos - glm::ivec3(c->getStartPos()));
+        }
+    }
+    if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
+        std::cout << "Right click DOWN\n";
+    }
+
+    window;
+    mods;
 }
 
 void setRenderingMode(GLuint newMode) {

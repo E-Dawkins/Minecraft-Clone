@@ -5,6 +5,7 @@
 #include "WorldGenerator.h"
 #include "ChunkManager.h"
 #include "DebugClock.h"
+#include <set>
 
 void checkGLError(const char* stmt, const char* fname, int line) {
 	GLenum err = glGetError();
@@ -71,20 +72,24 @@ void Chunk::render()
 }
 
 void Chunk::update() {
-	for (auto& i : indexesToDelete) {
-		blocks[i.x][i.y][i.z] = AIR;
-	}
-
 	if (!indexesToDelete.empty()) {
+		std::set<Chunk*> otherChunksToUpdate = {};
+
+		for (auto& i : indexesToDelete) {
+			switchFaceState(i, BlockFace::FRONT);
+			switchFaceState(i, BlockFace::BACK);
+			switchFaceState(i, BlockFace::LEFT);
+			switchFaceState(i, BlockFace::RIGHT);
+			switchFaceState(i, BlockFace::TOP);
+			switchFaceState(i, BlockFace::BOTTOM);
+
+			blocks[i.x][i.y][i.z] = AIR;
+		}
+
 		indexesToDelete.clear();
 		indexesToDelete.shrink_to_fit();
 
-		faceData.clear();
-		faceData.shrink_to_fit();
-		generateFaces();
-
-		GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, faceDataBuffer));
-		GL_CHECK(glBufferData(GL_ARRAY_BUFFER, sizeof(FaceData) * faceData.size(), faceData.data(), GL_STATIC_DRAW));
+		reBindFaceBuffer();
 	}
 }
 
@@ -198,32 +203,12 @@ void Chunk::insertFaceData(glm::vec3& blockIndex)
 	insertData(BOTTOM);
 }
 
-bool Chunk::isFaceVisible(glm::vec3& pos, BlockFace face)
+bool Chunk::isFaceVisible(const glm::vec3& pos, BlockFace face)
 {
 	glm::vec3 offset = faceNormals[face];
-	glm::vec3 queryPos = pos + offset;
+	glm::vec3 queryPos = startPos + pos + offset;
 
-	if (!isValidBlockIndex(queryPos)) {
-		glm::vec2 index = posToChunkIndex(queryPos);
-		Chunk* queryChunk = ChunkManager::getInstance()->getChunkAtIndex(index);
-
-		if (!queryChunk || queryPos.z < 0 || queryPos.z >= chunkSize.z) {
-			return true; // default to true if no chunk exists at queryPos
-						 // or we are querying outside the valid height range
-		}
-		else {
-			glm::vec3 globalQueryPos = queryPos + startPos;
-			return (WorldGenerator::getBlockTypeAtPos(globalQueryPos) == AIR);
-		}
-	}
-
-	// wrap queryPos before indexing into blocks array
-	queryPos = glm::mod(queryPos, chunkSize);
-	if (blocks[(int)queryPos.x][(int)queryPos.y][(int)queryPos.z] == AIR) {
-		return true;
-	}
-
-	return false;
+	return (WorldGenerator::getBlockTypeAtPos(queryPos) == AIR);
 }
 
 bool Chunk::isValidBlockIndex(const glm::ivec3 index) const {
@@ -231,4 +216,60 @@ bool Chunk::isValidBlockIndex(const glm::ivec3 index) const {
 	bool withinMax = glm::all(glm::lessThan(index, glm::ivec3(chunkSize)));
 
 	return withinMin && withinMax;
+}
+
+void Chunk::switchFaceState(const glm::ivec3& blockPos, BlockFace face) {
+	if (!isValidBlockIndex(blockPos)) {
+		return;
+	}
+
+	FaceData f;
+	f.setPosition(blockPos);
+	f.setDirection(face);
+	f.setBlockId(blockTextureIds[getBlockAtIndex(blockPos)][face]);
+
+	// Deleting an existing face
+	auto itr = std::find(faceData.begin(), faceData.end(), f);
+	if (itr != faceData.end()) {
+		faceData.erase(itr);
+	}
+	// Inserting a new face
+	else {
+		glm::vec3 newPos = blockPos + faceNormals[face];
+		BlockType newType = getBlockAtIndex(newPos);
+
+		// Query block is inside this chunk
+		if (isValidBlockIndex(newPos)) {
+			if (newType != BlockType::AIR) {
+				FaceData newFace;
+				newFace.setPosition(newPos);
+				newFace.setDirection(inverseFace[face]);
+				newFace.setBlockId(blockTextureIds[newType][face]);
+				faceData.emplace_back(newFace);
+			}
+		}
+		// Query block is not in this chunk
+		else {
+			glm::vec2 index = posToChunkIndex(newPos + startPos);
+			if (Chunk* c = ChunkManager::getInstance()->getChunkAtIndex(index)) {
+				newPos = glm::mod(newPos, chunkSize);
+				newType = c->getBlockAtIndex(newPos);
+
+				if (newType != BlockType::AIR) {
+					FaceData newFace;
+					newFace.setPosition(newPos);
+					newFace.setDirection(inverseFace[face]);
+					newFace.setBlockId(blockTextureIds[newType][face]);
+
+					c->faceData.push_back(newFace);
+					c->reBindFaceBuffer();
+				}
+			}
+		}
+	}
+}
+
+void Chunk::reBindFaceBuffer() {
+	GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, faceDataBuffer));
+	GL_CHECK(glBufferData(GL_ARRAY_BUFFER, sizeof(FaceData) * faceData.size(), faceData.data(), GL_STATIC_DRAW));
 }
