@@ -30,6 +30,7 @@ glm::vec2 camChunkIndex = Chunk::posToChunkIndex(cam.getPosition());
 GLuint renderingMode = 0;
 GLuint numRenderingModes = 2; // normal, wire-frame
 GLuint renderDistance = 5;
+BlockType currentBlockType = DIRT;
 
 void processInput(GLFWwindow* window);
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height);
@@ -240,6 +241,12 @@ void processInput(GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_F1) == GLFW_RELEASE) {
         f1Pressed = false;
     }
+
+    // block selection
+    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS) currentBlockType = BlockType::DIRT;
+    if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS) currentBlockType = BlockType::GRASS;
+    if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS) currentBlockType = BlockType::STONE;
+    if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS) currentBlockType = BlockType::COBBLESTONE;
 }
 
 #pragma warning(suppress: 4100)
@@ -266,6 +273,7 @@ void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
     cam.moveSpeed = std::max(cam.moveSpeed + (float)yoffset, 1.0f);
 }
 
+#pragma warning(suppress: 4100)
 void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
     HitResult r = Raycast::getHitResult(cam.getPosition(), cam.getForwardDir(), 10.f);
 
@@ -285,12 +293,9 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
         // r.hitPos + r.hitNormal = the position of the 'added' block
         glm::vec2 chunkIndex = Chunk::posToChunkIndex(r.hitPos + r.hitNormal);
         if (Chunk* c = ChunkManager::getInstance()->getChunkAtIndex(chunkIndex)) {
-            c->changeBlockAtIndex({ r.hitPos - glm::ivec3(c->getStartPos()) + r.hitNormal, COBBLESTONE});
+            c->changeBlockAtIndex({ r.hitPos - glm::ivec3(c->getStartPos()) + r.hitNormal, currentBlockType });
         }
     }
-
-    window;
-    mods;
 }
 
 void setRenderingMode(GLuint newMode) {
