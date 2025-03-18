@@ -28,7 +28,8 @@ struct FaceData {
         direction_id = ((d & 7) << 4) | (direction_id & 15);
     }
 
-    void setBlockId(const uint16_t b) {
+    void setBlockTexId(const BlockType t, const BlockFace f) {
+        uint16_t b = blockTextureIds[t][f];
         // b => ---- bbbb
         direction_id = (direction_id & 240) | (b & 15);
     }
@@ -36,6 +37,15 @@ struct FaceData {
     const BlockType getBlockId() const {
         return (BlockType)(direction_id & 15);
     }
+
+    const bool operator == (const FaceData& otherFace) {
+        return position == otherFace.position && direction_id == otherFace.direction_id;
+    }
+};
+
+struct IndexChangeData {
+    glm::ivec3 blockIndex = { 0, 0, 0 };
+    BlockType blockType = BlockType::AIR;
 };
 
 class Chunk
@@ -46,10 +56,25 @@ public:
 
     void init();
     void render();
+    void update();
+
+    void changeBlockAtIndex(const IndexChangeData& changeData);
 
     // @returns The chunk index that contains the position
     static glm::vec2 posToChunkIndex(const glm::vec3& pos) {
         return glm::floor(pos / chunkSize);
+    }
+
+    const BlockType getBlockAtIndex(const glm::ivec3& index) const {
+        if (!isValidBlockIndex(index)) {
+            return AIR;
+        }
+
+        return blocks[index.x][index.y][index.z];
+    }
+    
+    const glm::vec3 getStartPos() const {
+        return startPos;
     }
 
     const glm::vec2 getChunkIndex() const {
@@ -66,7 +91,13 @@ private:
     void initShaderVars();
 
     void insertFaceData(glm::vec3& blockIndex);
-    bool isFaceVisible(glm::vec3& pos, BlockFace face);
+    bool isFaceVisible(const glm::vec3& pos, BlockFace face);
+    bool isValidBlockIndex(const glm::ivec3 index) const;
+
+    void reBindFaceBuffer();
+
+    void removeBlock(const IndexChangeData& data);
+    void addBlock(const IndexChangeData& data);
 
 private:
     glm::vec3 startPos = { 0, 0, 0 };
@@ -76,5 +107,7 @@ private:
     GLuint faceDataBuffer;
     std::vector<FaceData> faceData = {};
     std::vector<std::vector<std::vector<BlockType>>> blocks;
+
+    std::vector<IndexChangeData> indexesToChange = {};
 };
 

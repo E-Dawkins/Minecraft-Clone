@@ -47,6 +47,27 @@ void ChunkManager::initChunks(uint8_t renderDistance) {
 	}
 }
 
+void ChunkManager::updateChunks() {
+	std::lock_guard<std::mutex> lock(chunkMutex);
+
+	std::vector<glm::vec2> nullIndexes = {};
+
+	for (auto& c : worldChunks) {
+		if (c.second == nullptr) {
+			nullIndexes.emplace_back(c.first);
+			continue;
+		}
+
+		c.second->update();
+	}
+
+	for (auto& index : nullIndexes) {
+		worldChunks.erase(index);
+	}
+
+	nullIndexes.clear();
+}
+
 void ChunkManager::renderChunks() {
 	std::lock_guard<std::mutex> lock(chunkMutex);
 
@@ -73,6 +94,8 @@ size_t ChunkManager::chunkCount() {
 }
 
 const size_t ChunkManager::getFaceCount() const {
+	std::lock_guard<std::mutex> lock(getInstance()->chunkMutex);
+
 	size_t count = 0;
 	for (auto& c : worldChunks) {
 		count += c.second->getFaceCount();
@@ -80,7 +103,7 @@ const size_t ChunkManager::getFaceCount() const {
 	return count;
 }
 
-Chunk* ChunkManager::getChunkAtIndex(glm::vec2& index) {
+Chunk * ChunkManager::getChunkAtIndex(const glm::vec2 & index) {
 	if (worldChunks.find(index) != worldChunks.end()) {
 		return worldChunks[index];
 	}
@@ -92,6 +115,17 @@ const std::pair<const glm::vec2, Chunk*>& ChunkManager::at(size_t index) const {
 	auto itr = worldChunks.begin();
 	std::advance(itr, index);
 	return *itr;
+}
+
+const BlockType ChunkManager::getBlockAtPos(const glm::ivec3& pos) const {
+	glm::vec2 chunkIndex = Chunk::posToChunkIndex(pos);
+	Chunk* c = getInstance()->getChunkAtIndex(chunkIndex);
+
+	if (c) {
+		return c->getBlockAtIndex(pos - glm::ivec3(c->getStartPos()));
+	}
+	
+	return AIR;
 }
 
 void ChunkManager::removeChunk(glm::vec2& chunkIndex) {

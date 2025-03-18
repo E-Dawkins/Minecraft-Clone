@@ -4,6 +4,7 @@
 #include <thread>
 #include <mutex>
 #include <queue>
+#include "BlockAttribs.h"
 
 class Chunk;
 
@@ -27,12 +28,14 @@ public:
 	~ChunkManager();
 
 	void initChunks(uint8_t renderDistance);
+	void updateChunks();
 	void renderChunks();
 
 	size_t chunkCount();
 	const size_t getFaceCount() const;
-	Chunk* getChunkAtIndex(glm::vec2& index);
+	Chunk * getChunkAtIndex(const glm::vec2 & index);
 	const std::pair<const glm::vec2, Chunk*>& at(size_t index) const;
+	const BlockType getBlockAtPos(const glm::ivec3& pos) const;
 
 	void removeChunk(glm::vec2& chunkIndex);
 	void addChunk(const glm::vec2 & chunkIndex);

@@ -5,6 +5,7 @@
 #include "WorldGenerator.h"
 #include "ChunkManager.h"
 #include "DebugClock.h"
+#include <set>
 
 void checkGLError(const char* stmt, const char* fname, int line) {
 	GLenum err = glGetError();
@@ -68,6 +69,30 @@ void Chunk::render()
 
 	// un-bind texture
 	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void Chunk::update() {
+	if (!indexesToChange.empty()) {
+		std::set<Chunk*> otherChunksToUpdate = {};
+
+		for (auto& i : indexesToChange) {
+			if (i.blockType == AIR) {
+				removeBlock(i);
+			}
+			else {
+				addBlock(i);
+			}
+		}
+
+		indexesToChange.clear();
+		indexesToChange.shrink_to_fit();
+
+		reBindFaceBuffer();
+	}
+}
+
+void Chunk::changeBlockAtIndex(const IndexChangeData& changeData) {
+	indexesToChange.emplace_back(changeData);
 }
 
 void Chunk::generateChunk()
@@ -158,8 +183,7 @@ void Chunk::insertFaceData(glm::vec3& blockIndex)
 		if (isFaceVisible(blockIndex, faceDirection)) {
 			FaceData f;
 			f.setPosition(blockIndex);
-			BlockType type = blocks[(int)blockIndex.x][(int)blockIndex.y][(int)blockIndex.z];
-			f.setBlockId(blockTextureIds[type][faceDirection]);
+			f.setBlockTexId(getBlockAtIndex(blockIndex), faceDirection);
 			f.setDirection(faceDirection);
 
 			faceData.emplace_back(f);
@@ -174,31 +198,138 @@ void Chunk::insertFaceData(glm::vec3& blockIndex)
 	insertData(BOTTOM);
 }
 
-bool Chunk::isFaceVisible(glm::vec3& pos, BlockFace face)
+bool Chunk::isFaceVisible(const glm::vec3& pos, BlockFace face)
 {
 	glm::vec3 offset = faceNormals[face];
-	glm::vec3 queryPos = pos + offset;
+	glm::vec3 queryPos = startPos + pos + offset;
 
-	bool withinMin = glm::all(glm::greaterThanEqual(queryPos, glm::vec3(0)));
-	bool withinMax = glm::all(glm::lessThan(queryPos, chunkSize));
-	if (!withinMin || !withinMax) {
-		glm::vec2 index = posToChunkIndex(queryPos);
-		Chunk* queryChunk = ChunkManager::getInstance()->getChunkAtIndex(index);
+	return (WorldGenerator::getBlockTypeAtPos(queryPos) == AIR);
+}
 
-		if (!queryChunk) {
-			return true; // default to true if no chunk exists at queryPos
+bool Chunk::isValidBlockIndex(const glm::ivec3 index) const {
+	bool withinMin = glm::all(glm::greaterThanEqual(index, glm::ivec3(0)));
+	bool withinMax = glm::all(glm::lessThan(index, glm::ivec3(chunkSize)));
+
+	return withinMin && withinMax;
+}
+
+void Chunk::reBindFaceBuffer() {
+	GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, faceDataBuffer));
+	GL_CHECK(glBufferData(GL_ARRAY_BUFFER, sizeof(FaceData) * faceData.size(), faceData.data(), GL_STATIC_DRAW));
+}
+
+void Chunk::removeBlock(const IndexChangeData& data) {
+	// can't remove air, so early return
+	if (getBlockAtIndex(data.blockIndex) == AIR) {
+		return;
+	}
+
+	// for each face
+	// -> if visible, delete from faceData
+	// -> if not visible
+	//    -> if facing inside chunk, add to this chunks' faceData
+	//    -> if facing outside chunk, add to other chunks' faceData
+
+	for (uint8_t i = 0; i < BlockFace::FACE_COUNT; i++) {
+		FaceData ref;
+		ref.setPosition(data.blockIndex);
+		ref.setDirection((BlockFace)i);
+		ref.setBlockTexId(getBlockAtIndex(data.blockIndex), (BlockFace)i);
+
+		// if ref FaceData is found, then the face is 'visible' and should be deleted
+		auto itr = std::find(faceData.begin(), faceData.end(), ref);
+		if (itr != faceData.end()) {
+			faceData.erase(itr);
+		}
+		// otherwise it is not 'visible' and should be added
+		else {
+			glm::ivec3 queryIndex = data.blockIndex + faceNormals[i];
+			if (queryIndex.z < 0 || queryIndex.z >= chunkSize.z) { // outside z-axis so skip adding this face
+				continue;
+			}
+			else if (isValidBlockIndex(queryIndex)) {
+				ref.setPosition(queryIndex);
+				ref.setDirection(inverseFace[i]);
+				ref.setBlockTexId(getBlockAtIndex(queryIndex), inverseFace[i]);
+
+				faceData.emplace_back(ref);
+			}
+			else {
+				glm::vec2 index = Chunk::posToChunkIndex(queryIndex + glm::ivec3(startPos));
+				if (Chunk* c = ChunkManager::getInstance()->getChunkAtIndex(index)) {
+					glm::vec3 wrappedIndex = glm::mod(glm::vec3(queryIndex), chunkSize);
+					ref.setPosition(wrappedIndex);
+					ref.setDirection(inverseFace[i]);
+					ref.setBlockTexId(c->getBlockAtIndex(wrappedIndex), inverseFace[i]);
+
+					c->faceData.emplace_back(ref);
+					c->reBindFaceBuffer();
+				}
+			}
+		}
+	}
+
+	blocks[data.blockIndex.x][data.blockIndex.y][data.blockIndex.z] = BlockType::AIR;
+	reBindFaceBuffer();
+}
+
+void Chunk::addBlock(const IndexChangeData& data) {
+	// can't place blocks inside eachother
+	if (getBlockAtIndex(data.blockIndex) != AIR) {
+		return;
+	}
+	
+	// loop over all faces of new block
+	// -> if a face exists already, delete it
+	// -> otherwise, add new face
+
+	for (uint8_t i = 0; i < BlockFace::FACE_COUNT; i++) {
+		glm::ivec3 offsetIndex = data.blockIndex + faceNormals[i];
+
+		if (isValidBlockIndex(offsetIndex)) {
+			FaceData ref;
+			ref.setPosition(offsetIndex);
+			ref.setDirection(inverseFace[i]);
+			ref.setBlockTexId(getBlockAtIndex(offsetIndex), inverseFace[i]);
+
+			// face exists, delete it
+			auto itr = std::find(faceData.begin(), faceData.end(), ref);
+			if (itr != faceData.end()) {
+				faceData.erase(itr);
+			}
+			else { // add new face
+				ref.setPosition(data.blockIndex);
+				ref.setDirection((BlockFace)i);
+				ref.setBlockTexId(data.blockType, (BlockFace)i);
+				faceData.emplace_back(ref);
+			}
 		}
 		else {
-			glm::vec3 globalQueryPos = queryPos + startPos;
-			return (WorldGenerator::getBlockTypeAtPos(globalQueryPos) == AIR);
+			glm::vec2 index = posToChunkIndex((glm::vec3)offsetIndex + startPos);
+			if (Chunk* c = ChunkManager::getInstance()->getChunkAtIndex(index)) {
+				glm::ivec3 wrappedOffsetIndex = glm::mod((glm::vec3)offsetIndex, chunkSize);
+
+				FaceData ref;
+				ref.setPosition(wrappedOffsetIndex);
+				ref.setDirection(inverseFace[i]);
+				ref.setBlockTexId(c->getBlockAtIndex(wrappedOffsetIndex), inverseFace[i]);
+
+				// we delete the face in the adjacent chunk if it exists
+				auto itr = std::find(c->faceData.begin(), c->faceData.end(), ref);
+				if (itr != c->faceData.end()) {
+					c->faceData.erase(itr);
+					c->reBindFaceBuffer();
+				}
+				else { // but we only ever add faces to this chunk
+					ref.setPosition(data.blockIndex);
+					ref.setDirection((BlockFace)i);
+					ref.setBlockTexId(data.blockType, (BlockFace)i);
+					faceData.emplace_back(ref);
+				}
+			}
 		}
 	}
 
-	// wrap queryPos before indexing into blocks array
-	queryPos = glm::mod(queryPos, chunkSize);
-	if (blocks[(int)queryPos.x][(int)queryPos.y][(int)queryPos.z] == AIR) {
-		return true;
-	}
-
-	return false;
+	blocks[data.blockIndex.x][data.blockIndex.y][data.blockIndex.z] = data.blockType;
+	reBindFaceBuffer();
 }

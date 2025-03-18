@@ -79,6 +79,7 @@ public:
 
 	const glm::mat4& getView() const { return view; }
 	const glm::vec3& getPosition() const { return position; }
+	const glm::vec3& getForwardDir() const { return forward; }
 
 private:
 	void calculateView() {

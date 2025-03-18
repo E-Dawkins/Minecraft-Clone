@@ -22,6 +22,7 @@
 #include "Camera.h"
 #include "ChunkManager.h"
 #include "DebugClock.h"
+#include "Raycast.h"
 
 const int WINDOW_WIDTH = 1280, WINDOW_HEIGHT = 960;
 Camera cam = Camera({ chunkSize.x / 2, chunkSize.y / 2, 12 }, { 1, 1, 0 });
@@ -29,11 +30,13 @@ glm::vec2 camChunkIndex = Chunk::posToChunkIndex(cam.getPosition());
 GLuint renderingMode = 0;
 GLuint numRenderingModes = 2; // normal, wire-frame
 GLuint renderDistance = 5;
+BlockType currentBlockType = DIRT;
 
 void processInput(GLFWwindow* window);
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height);
 void cursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
+void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void setRenderingMode(GLuint newMode);
 void reloadChunks();
 
@@ -65,6 +68,7 @@ int main(void)
     glfwSetFramebufferSizeCallback(window, frameBufferSizeCallback);
     glfwSetCursorPosCallback(window, cursorPosCallback);
     glfwSetScrollCallback(window, scrollCallback);
+    glfwSetMouseButtonCallback(window, mouseButtonCallback);
 
     // setup GLAD
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
@@ -74,6 +78,7 @@ int main(void)
     }
 
     AssetManager::loadShader("generic", "./assets/generic.vert", "./assets/generic.frag");
+    AssetManager::loadShader("line", "./assets/line.vert", "./assets/line.frag");
     GLuint shaderProgram = AssetManager::getAssetHandle("generic");
 
     // Bind shader uniforms
@@ -137,6 +142,7 @@ int main(void)
         }
 
         ChunkManager::getInstance()->checkForLoadedChunks();
+        ChunkManager::getInstance()->updateChunks();
 
         /* Render here */
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -235,6 +241,12 @@ void processInput(GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_F1) == GLFW_RELEASE) {
         f1Pressed = false;
     }
+
+    // block selection
+    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS) currentBlockType = BlockType::DIRT;
+    if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS) currentBlockType = BlockType::GRASS;
+    if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS) currentBlockType = BlockType::STONE;
+    if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS) currentBlockType = BlockType::COBBLESTONE;
 }
 
 #pragma warning(suppress: 4100)
@@ -259,6 +271,31 @@ void cursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
 #pragma warning(suppress: 4100)
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
     cam.moveSpeed = std::max(cam.moveSpeed + (float)yoffset, 1.0f);
+}
+
+#pragma warning(suppress: 4100)
+void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+    HitResult r = Raycast::getHitResult(cam.getPosition(), cam.getForwardDir(), 10.f);
+
+    // Raycast did not hit a valid block
+    if (r.hitType == BlockType::AIR) {
+        return;
+    }
+
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        // r.hitPos = the position of the 'removed' block
+        glm::vec2 chunkIndex = Chunk::posToChunkIndex(r.hitPos);
+        if (Chunk* c = ChunkManager::getInstance()->getChunkAtIndex(chunkIndex)) {
+            c->changeBlockAtIndex({ r.hitPos - glm::ivec3(c->getStartPos()), AIR });
+        }
+    }
+    if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
+        // r.hitPos + r.hitNormal = the position of the 'added' block
+        glm::vec2 chunkIndex = Chunk::posToChunkIndex(r.hitPos + r.hitNormal);
+        if (Chunk* c = ChunkManager::getInstance()->getChunkAtIndex(chunkIndex)) {
+            c->changeBlockAtIndex({ r.hitPos - glm::ivec3(c->getStartPos()) + r.hitNormal, currentBlockType });
+        }
+    }
 }
 
 void setRenderingMode(GLuint newMode) {
