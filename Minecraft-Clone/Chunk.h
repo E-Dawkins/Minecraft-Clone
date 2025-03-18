@@ -28,7 +28,8 @@ struct FaceData {
         direction_id = ((d & 7) << 4) | (direction_id & 15);
     }
 
-    void setBlockId(const uint16_t b) {
+    void setBlockTexId(const BlockType t, const BlockFace f) {
+        uint16_t b = blockTextureIds[t][f];
         // b => ---- bbbb
         direction_id = (direction_id & 240) | (b & 15);
     }
@@ -42,6 +43,11 @@ struct FaceData {
     }
 };
 
+struct IndexChangeData {
+    glm::ivec3 blockIndex = { 0, 0, 0 };
+    BlockType blockType = BlockType::AIR;
+};
+
 class Chunk
 {
 public:
@@ -52,7 +58,7 @@ public:
     void render();
     void update();
 
-    void deleteBlockAtIndex(const glm::ivec3 index);
+    void changeBlockAtIndex(const IndexChangeData& changeData);
 
     // @returns The chunk index that contains the position
     static glm::vec2 posToChunkIndex(const glm::vec3& pos) {
@@ -88,8 +94,10 @@ private:
     bool isFaceVisible(const glm::vec3& pos, BlockFace face);
     bool isValidBlockIndex(const glm::ivec3 index) const;
 
-    void switchFaceState(const glm::ivec3& blockPos, BlockFace face);
     void reBindFaceBuffer();
+
+    void removeBlock(const IndexChangeData& data);
+    void addBlock(const IndexChangeData& data);
 
 private:
     glm::vec3 startPos = { 0, 0, 0 };
@@ -100,6 +108,6 @@ private:
     std::vector<FaceData> faceData = {};
     std::vector<std::vector<std::vector<BlockType>>> blocks;
 
-    std::vector<glm::ivec3> indexesToDelete = {};
+    std::vector<IndexChangeData> indexesToChange = {};
 };
 

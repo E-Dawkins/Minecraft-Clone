@@ -268,7 +268,6 @@ void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
 
 void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
     HitResult r = Raycast::getHitResult(cam.getPosition(), cam.getForwardDir(), 10.f);
-    glm::vec2 chunkIndex = Chunk::posToChunkIndex(r.hitPos);
 
     // Raycast did not hit a valid block
     if (r.hitType == BlockType::AIR) {
@@ -276,12 +275,18 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
     }
 
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        // r.hitPos = the position of the 'removed' block
+        glm::vec2 chunkIndex = Chunk::posToChunkIndex(r.hitPos);
         if (Chunk* c = ChunkManager::getInstance()->getChunkAtIndex(chunkIndex)) {
-            c->deleteBlockAtIndex(r.hitPos - glm::ivec3(c->getStartPos()));
+            c->changeBlockAtIndex({ r.hitPos - glm::ivec3(c->getStartPos()), AIR });
         }
     }
     if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
-        std::cout << "Right click DOWN\n";
+        // r.hitPos + r.hitNormal = the position of the 'added' block
+        glm::vec2 chunkIndex = Chunk::posToChunkIndex(r.hitPos + r.hitNormal);
+        if (Chunk* c = ChunkManager::getInstance()->getChunkAtIndex(chunkIndex)) {
+            c->changeBlockAtIndex({ r.hitPos - glm::ivec3(c->getStartPos()) + r.hitNormal, COBBLESTONE});
+        }
     }
 
     window;
