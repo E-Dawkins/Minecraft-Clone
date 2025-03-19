@@ -23,15 +23,18 @@
 #include "ChunkManager.h"
 #include "DebugClock.h"
 #include "Raycast.h"
+#include "Config.h"
 
-const int WINDOW_WIDTH = 1280, WINDOW_HEIGHT = 960;
+int WINDOW_WIDTH = 0, WINDOW_HEIGHT = 0;
 Camera cam = Camera({ chunkSize.x / 2, chunkSize.y / 2, 12 }, { 1, 1, 0 });
 glm::vec2 camChunkIndex = Chunk::posToChunkIndex(cam.getPosition());
 GLuint renderingMode = 0;
 GLuint numRenderingModes = 2; // normal, wire-frame
-GLuint renderDistance = 5;
+GLuint renderDistance = 0;
 BlockType currentBlockType = DIRT;
+bool drawImGui = false;
 
+void setupConfig();
 void processInput(GLFWwindow* window);
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height);
 void cursorPosCallback(GLFWwindow* window, double xpos, double ypos);
@@ -42,6 +45,8 @@ void reloadChunks();
 
 int main(void)
 {
+    setupConfig();
+
     GLFWwindow* window;
 
     /* Initialize the library */
@@ -161,27 +166,29 @@ int main(void)
 
         size_t faceCount = ChunkManager::getInstance()->getFaceCount();
 
-        // Setup ImGui window/s here
-        ImGui::SetNextWindowSize(ImVec2(0, 0)); // set next window to auto-fit its' content
-        ImGui::SetNextWindowPos(ImVec2(50, 50));
-        ImGui::Begin("FPS Counter");
-        ImGui::Text("Target: %.1f", (float)targetFPS);
-        ImGui::Text("Current: %.1f", currentFPS);
-        ImGui::Text("Range: %.1f-%.1f", minFPS, maxFPS);
-        ImGui::End();
+        if (drawImGui) {
+            // Setup ImGui window/s here
+            ImGui::SetNextWindowSize(ImVec2(0, 0)); // set next window to auto-fit its' content
+            ImGui::SetNextWindowPos(ImVec2(50, 50));
+            ImGui::Begin("FPS Counter");
+            ImGui::Text("Target: %.1f", (float)targetFPS);
+            ImGui::Text("Current: %.1f", currentFPS);
+            ImGui::Text("Range: %.1f-%.1f", minFPS, maxFPS);
+            ImGui::End();
 
-        ImGui::SetNextWindowSize(ImVec2(0, 0)); // set next window to auto-fit its' content
-        ImGui::SetNextWindowPos(ImVec2(50, 150));
-        ImGui::Begin("Graphic Info.");
-        ImGui::Text("Faces: %i", faceCount);
-        ImGui::Text("Face Data: %.2f kb", (sizeof(FaceData) * faceCount) / 1'024.f);
-        ImGui::End();
+            ImGui::SetNextWindowSize(ImVec2(0, 0)); // set next window to auto-fit its' content
+            ImGui::SetNextWindowPos(ImVec2(50, 150));
+            ImGui::Begin("Graphic Info.");
+            ImGui::Text("Faces: %i", faceCount);
+            ImGui::Text("Face Data: %.2f kb", (sizeof(FaceData) * faceCount) / 1'024.f);
+            ImGui::End();
 
-        ImGui::SetNextWindowSize(ImVec2(0, 0)); // set next window to auto-fit its' content
-        ImGui::SetNextWindowPos(ImVec2(WINDOW_WIDTH - 50, 50), 0, ImVec2(1, 0));
-        ImGui::Begin("Block Info.");
-        ImGui::Text("Placable Block: %s", BlockNames[currentBlockType + 1].data());
-        ImGui::End();
+            ImGui::SetNextWindowSize(ImVec2(0, 0)); // set next window to auto-fit its' content
+            ImGui::SetNextWindowPos(ImVec2(WINDOW_WIDTH - 50.f, 50), 0, ImVec2(1, 0));
+            ImGui::Begin("Block Info.");
+            ImGui::Text("Placable Block: %s", BlockNames[currentBlockType + 1].data());
+            ImGui::End();
+        }
 
         // Draw ImGui window/s here
         ImGui::Render();
@@ -215,6 +222,17 @@ int main(void)
 
     glfwTerminate();
     return 0;
+}
+
+void setupConfig() {
+    Config::loadConfigFile("./assets/config.cfg");
+
+    renderDistance = Config::getVar<int>("renderDistance");
+    
+    WINDOW_WIDTH = Config::getVar<int>("width");
+    WINDOW_HEIGHT = Config::getVar<int>("height");
+
+    drawImGui = Config::getVar<bool>("drawImGui");
 }
 
 void processInput(GLFWwindow* window) {
@@ -279,7 +297,7 @@ void frameBufferSizeCallback(GLFWwindow* window, int width, int height) {
 
 bool firstMouse = true;
 void cursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
-    constexpr int halfWidth = WINDOW_WIDTH / 2, halfHeight = WINDOW_HEIGHT / 2;
+    const int halfWidth = WINDOW_WIDTH / 2, halfHeight = WINDOW_HEIGHT / 2;
     
     if (!firstMouse) {
         cam.addLookInput({ xpos - halfWidth, halfHeight - ypos });
