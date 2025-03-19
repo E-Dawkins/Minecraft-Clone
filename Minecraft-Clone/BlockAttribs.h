@@ -9,6 +9,8 @@ enum BlockType : int8_t {
 	GRASS,
 	STONE,
 	COBBLESTONE,
+	WOODEN_PLANK,
+	WOODEN_LOG,
 
 	TYPE_COUNT
 };
@@ -19,7 +21,9 @@ constexpr std::string_view BlockNames[TYPE_COUNT + 1] = {
 	"Dirt",
 	"Grass",
 	"Stone",
-	"Cobblestone"
+	"Cobblestone",
+	"Wooden Plank",
+	"Wooden Log"
 };
 static_assert(std::ranges::all_of(BlockNames, [](const std::string_view& s) {return !s.empty(); }), "Not enough block names!");
 
@@ -50,4 +54,6 @@ constexpr uint8_t blockTextureIds[TYPE_COUNT][6] = {
 	{ 2, 2, 2, 2, 1, 0 }, // GRASS
 	{ 3, 3, 3, 3, 3, 3 }, // STONE
 	{ 4, 4, 4, 4, 4, 4 }, // COBBLESTONE
+	{ 5, 5, 5, 5, 5, 5 }, // WOODEN PLANK
+	{ 7, 7, 7, 7, 6, 6 }, // WOODEN LOG
 };
