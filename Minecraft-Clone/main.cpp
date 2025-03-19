@@ -177,6 +177,12 @@ int main(void)
         ImGui::Text("Face Data: %.2f kb", (sizeof(FaceData) * faceCount) / 1'024.f);
         ImGui::End();
 
+        ImGui::SetNextWindowSize(ImVec2(0, 0)); // set next window to auto-fit its' content
+        ImGui::SetNextWindowPos(ImVec2(WINDOW_WIDTH - 50, 50), 0, ImVec2(1, 0));
+        ImGui::Begin("Block Info.");
+        ImGui::Text("Placable Block: %s", BlockNames[currentBlockType + 1].data());
+        ImGui::End();
+
         // Draw ImGui window/s here
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -243,10 +249,26 @@ void processInput(GLFWwindow* window) {
     }
 
     // block selection
-    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS) currentBlockType = BlockType::DIRT;
-    if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS) currentBlockType = BlockType::GRASS;
-    if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS) currentBlockType = BlockType::STONE;
-    if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS) currentBlockType = BlockType::COBBLESTONE;
+    static bool qPressed = false;
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS && !qPressed) {
+        currentBlockType = (BlockType)(currentBlockType - 1);
+        qPressed = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_RELEASE) {
+        qPressed = false;
+    }
+
+    static bool ePressed = false;
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS && !ePressed) {
+        currentBlockType = (BlockType)(currentBlockType + 1);
+        ePressed = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_RELEASE) {
+        ePressed = false;
+    }
+
+    if (currentBlockType < 0) currentBlockType = (BlockType)(BlockType::TYPE_COUNT - 1);
+    if (currentBlockType >= BlockType::TYPE_COUNT) currentBlockType = (BlockType)0;
 }
 
 #pragma warning(suppress: 4100)
