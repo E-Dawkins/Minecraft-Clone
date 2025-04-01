@@ -18,22 +18,22 @@ uniform vec2 chunkIndex;
 
 vec3 getRotatedPos(uint direction) {
    switch (direction) {
-      case 0: return vec3( position.x, -position.z, position.y);
-      case 1: return vec3(-position.x,  position.z, position.y);
-      case 2: return vec3(-position.z, -position.x, position.y);
-      case 3: return vec3( position.z,  position.x, position.y);
-      case 5: return vec3( position.x, -position.y, position.z);
+      case 0u: return vec3( position.x, -position.z, position.y);
+      case 1u: return vec3(-position.x,  position.z, position.y);
+      case 2u: return vec3(-position.z, -position.x, position.y);
+      case 3u: return vec3( position.z,  position.x, position.y);
+      case 5u: return vec3( position.x, -position.y, position.z);
       default: return position;
    }
 }
 
 vec3 getFaceOffset(uint direction) {
    switch (direction) {
-      case 0: return vec3(0, -0.5f, 0);
-      case 1: return vec3(0,  0.5f, 0);
-      case 2: return vec3(-0.5f, 0, 0);
-      case 3: return vec3( 0.5f, 0, 0);
-      case 5: return vec3(0, 0, -0.5f);
+      case 0u: return vec3(0, -0.5f, 0);
+      case 1u: return vec3(0,  0.5f, 0);
+      case 2u: return vec3(-0.5f, 0, 0);
+      case 3u: return vec3( 0.5f, 0, 0);
+      case 5u: return vec3(0, 0, -0.5f);
       default: return vec3(0, 0, 0.5f);
    }
 }
